@@ -1,0 +1,11 @@
+# Secrets et données locales : jamais dans Git.
+.env
+.env.*
+!.env.example
+data/
+node_modules/
+*.db
+*.db-shm
+*.db-wal
+test-results/
+playwright-report/

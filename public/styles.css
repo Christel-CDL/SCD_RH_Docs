@@ -1,0 +1,85 @@
+/* Mobile d'abord : gros boutons, texte lisible, contrastes conformes RGAA (rapport ≥ 4,5:1). */
+:root {
+  --fond: #f5f6f8;
+  --texte: #1c2430;
+  --secondaire: #4a5565;
+  --accent: #0b5cad;
+  --accent-fonce: #084a8c;
+  --erreur: #a4161a;
+  --erreur-fond: #fdecec;
+  --info-fond: #e8f1fb;
+  --bord: #c9d0da;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 1.125rem;
+  line-height: 1.5;
+  color: var(--texte);
+  background: var(--fond);
+}
+
+.entete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  padding: .75rem 1rem;
+  background: #fff;
+  border-bottom: 1px solid var(--bord);
+}
+.agence { margin: 0; font-weight: 700; }
+.deconnexion { display: flex; align-items: center; gap: .5rem; font-size: .95rem; color: var(--secondaire); }
+
+main { max-width: 36rem; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+h1 { font-size: 1.6rem; line-height: 1.25; margin: .5rem 0 1rem; }
+
+.formulaire { display: flex; flex-direction: column; gap: .75rem; margin-top: 1rem; }
+label { font-weight: 600; }
+input[type="email"], input[type="text"] {
+  width: 100%;
+  min-height: 3rem;
+  padding: .6rem .8rem;
+  font: inherit;
+  border: 2px solid var(--bord);
+  border-radius: .5rem;
+  background: #fff;
+}
+
+.bouton {
+  display: inline-block;
+  width: 100%;
+  min-height: 3.25rem;
+  padding: .8rem 1rem;
+  font: inherit;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+  color: #fff;
+  background: var(--accent);
+  border: 0;
+  border-radius: .5rem;
+  cursor: pointer;
+}
+.bouton:hover { background: var(--accent-fonce); }
+
+.lien {
+  font: inherit;
+  color: var(--accent);
+  text-decoration: underline;
+  background: none;
+  border: 0;
+  padding: .25rem;
+  cursor: pointer;
+}
+
+:focus-visible { outline: 3px solid #f2a900; outline-offset: 2px; }
+
+a { color: var(--accent); }
+
+.message { padding: .75rem 1rem; border-radius: .5rem; background: var(--info-fond); }
+.message.erreur { background: var(--erreur-fond); color: var(--erreur); }
