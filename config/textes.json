@@ -30,8 +30,22 @@
     "Cadrez tout le document : les quatre coins doivent être visibles.",
     "Évitez les reflets : pas de flash, pas de lampe juste au-dessus.",
     "Tenez le téléphone bien droit, au-dessus du document, et attendez que l'image soit nette.",
-    "Vous pouvez aussi envoyer un PDF (par exemple une attestation téléchargée sur ameli.fr).",
+    "Vous pouvez aussi envoyer un PDF (par exemple une attestation téléchargée sur ameli.fr) avec « Choisir un fichier ».",
+    "Si une photo est refusée deux fois, vous pourrez l'envoyer quand même : l'agence la vérifiera.",
     "Vous pouvez vous arrêter à tout moment : les pièces validées sont enregistrées. Revenez plus tard avec le même lien.",
     "Un problème ? Répondez à l'e-mail que vous avez reçu : il arrivera à l'agence."
-  ]
+  ],
+  "_lisibilite": "Messages affichés au salarié quand une photo ne passe pas le contrôle de lisibilité (seuils dans controles.json). « forcer » s'affiche après plusieurs échecs, avec un bouton pour envoyer quand même.",
+  "lisibilite": {
+    "petite": "La photo est trop petite pour être lue. Rapprochez-vous : le document doit remplir presque tout l'écran.",
+    "floue": "La photo est floue. Posez le document à plat, tenez le téléphone bien immobile, attendez que l'image soit nette, puis réessayez.",
+    "sombre": "La photo est trop sombre. Mettez-vous près d'une fenêtre ou allumez la lumière, puis réessayez.",
+    "claire": "La photo est trop claire. Éloignez-vous de la lampe ou du soleil direct, puis réessayez.",
+    "reflet": "Il y a un reflet sur le document. Changez légèrement l'inclinaison du téléphone, sans flash, puis réessayez.",
+    "forcer": "Si vous n'arrivez pas à faire mieux, vous pouvez envoyer cette photo quand même : l'agence la vérifiera.",
+    "bouton_forcer": "Envoyer cette photo quand même",
+    "pdf_lecture": "Ce PDF n'a pas pu être ouvert. S'il est protégé par un mot de passe, prenez plutôt chaque page en photo.",
+    "pdf_pages": "Ce PDF a trop de pages. Envoyez seulement les pages demandées, ou prenez-les en photo.",
+    "heic": "Cette photo n'a pas pu être lue. Reprenez-la avec le bouton « Prendre une photo »."
+  }
 }

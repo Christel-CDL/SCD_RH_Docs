@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { creerAuth, EMAIL } from './auth.js';
 import { creerLimiteur } from './securite/limiteur.js';
 import { creerReglages, analyserDomaines } from './reglages.js';
-import { chargerCatalogue, chargerTextes } from './catalogue.js';
+import { chargerCatalogue, chargerTextes, chargerControles } from './catalogue.js';
 import { creerEmails } from './emails.js';
 import { creerDemandes, validerDemande, TYPES } from './demandes.js';
 import { creerUtilisateurs } from './utilisateurs.js';
@@ -21,12 +21,17 @@ import { creerDepot, LIMITES } from './depot.js';
 import { journaliser } from './db.js';
 import { empreinte } from './securite/jetons.js';
 import {
-  enTetesSecurite, cookieSession, nomCookieSession, lireCookies, lireFormulaire, lireMultipart, origineAutorisee, adresseClient,
+  enTetesSecurite, CSP_DEPOT, cookieSession, nomCookieSession, lireCookies, lireFormulaire, lireMultipart, origineAutorisee, adresseClient,
 } from './http.js';
 import * as pages from './pages.js';
 
 const DOSSIER_PUBLIC = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
 const FICHIERS_PUBLICS = { '/styles.css': 'text/css; charset=utf-8', '/depot.js': 'text/javascript; charset=utf-8' };
+// Bibliothèques servies par l'application elle-même (jamais par un site tiers) : liste fermée de types,
+// chemin sans « .. » ni caractère inattendu. Versions et empreintes dans public/vendor/EMPREINTES.json.
+const VENDOR = /^\/vendor\/(?:pdfjs|libheif)(?:\/[A-Za-z0-9_-]+)*\/[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*\.(mjs|wasm|pfb|ttf)$/;
+const TYPES_VENDOR = { mjs: 'text/javascript; charset=utf-8', wasm: 'application/wasm', pfb: 'application/octet-stream', ttf: 'font/ttf' };
+const etags = new Map(); // chemin → { mtime, etag } : ne recalcule pas l'empreinte d'un gros fichier à chaque visite
 const QUINZE_MINUTES = 15 * 60e3;
 
 // Messages affichés après une redirection : seul un code connu passe dans l'adresse, jamais un texte saisi.
@@ -42,9 +47,10 @@ const INFOS = {
 // Le jeton du salarié est dans le chemin (/d/<jeton>) : il est masqué dans le journal d'accès.
 const cheminJournal = (url) => url.split('?')[0].replace(/^\/d\/[^/]+/, '/d/***');
 
-export function creerApp({ db, config, notificateur, catalogue, textes, stockage }) {
+export function creerApp({ db, config, notificateur, catalogue, textes, controles, stockage }) {
   catalogue ??= chargerCatalogue(config.configDir);
   textes ??= chargerTextes(config.configDir);
+  controles ??= chargerControles(config.configDir);
   const reglages = creerReglages(db);
   const auth = creerAuth({ db, config, reglages });
   const limiteur = creerLimiteur();
@@ -52,7 +58,7 @@ export function creerApp({ db, config, notificateur, catalogue, textes, stockage
   const demandes = creerDemandes({ db, config });
   const utilisateurs = creerUtilisateurs({ db, reglages });
   stockage ??= creerStockage({ dataDir: config.dataDir, cle: config.cleFichiers });
-  const depot = creerDepot({ db, catalogue, stockage });
+  const depot = creerDepot({ db, catalogue, stockage, controles });
   const entetes = enTetesSecurite(config);
   const agence = config.agence;
 
@@ -90,7 +96,7 @@ export function creerApp({ db, config, notificateur, catalogue, textes, stockage
   }
   function repondreDepot(res, json, demande, jeton, { statut, erreur, abrev }) {
     if (json) return envoyerJson(res, statut, { erreur });
-    html(res, statut, pages.pageDepot({ agence, demande, jeton, etat: depot.etat(demande), textes, erreur: { abrev, texte: erreur } }));
+    html(res, statut, pages.pageDepot({ agence, demande, jeton, etat: depot.etat(demande), textes, controles, erreur: { abrev, texte: erreur } }), { 'Content-Security-Policy': CSP_DEPOT });
   }
   const pageAdmin = (session, extra = {}) => pages.pageAdminUtilisateurs({
     agence, session, utilisateurs: utilisateurs.lister(), domaines: reglages.domaines(), ...extra,
@@ -209,7 +215,7 @@ export function creerApp({ db, config, notificateur, catalogue, textes, stockage
         const demande = demandeDuLien(req, res, jeton);
         if (!demande) return;
         if (demande.statut === 'complete') return html(res, 200, pages.pageDepotTermine({ agence, demande }));
-        html(res, 200, pages.pageDepot({ agence, demande, jeton, etat: depot.etat(demande), textes }));
+        html(res, 200, pages.pageDepot({ agence, demande, jeton, etat: depot.etat(demande), textes, controles }), { 'Content-Security-Policy': CSP_DEPOT });
       },
     },
     {
@@ -226,7 +232,9 @@ export function creerApp({ db, config, notificateur, catalogue, textes, stockage
         for (const f of formulaire.getAll('fichier')) {
           if (typeof f === 'object' && f.size > 0) fichiers.push(Buffer.from(await f.arrayBuffer()));
         }
-        const resultat = depot.deposer(demande, abrev, { choix: formulaire.get('choix'), fichiers });
+        const resultat = depot.deposer(demande, abrev, {
+          choix: formulaire.get('choix'), fichiers, aVerifier: formulaire.get('a_verifier') === '1', depuisPdf: formulaire.get('source') === 'pdf',
+        });
         if (resultat.erreur) return repondreDepot(res, json, demande, jeton, { ...resultat, abrev });
         if (json) return envoyerJson(res, 200, { ok: true });
         rediriger(res, `/d/${jeton}#piece-${abrev}`);
@@ -301,15 +309,22 @@ export function creerApp({ db, config, notificateur, catalogue, textes, stockage
     let url;
     try { url = new URL(req.url, 'http://interne'); } catch { return html(res, 400, 'Requête invalide'); }
 
-    if (req.method === 'GET' && FICHIERS_PUBLICS[url.pathname]) {
+    const vendor = req.method === 'GET' && url.pathname.match(VENDOR);
+    if (req.method === 'GET' && (FICHIERS_PUBLICS[url.pathname] || vendor)) {
       // Revalidation à chaque affichage (304 si rien n'a changé) : après une mise à jour,
       // aucun téléphone ne garde l'ancien script face au nouveau serveur.
-      const contenu = fs.readFileSync(path.join(DOSSIER_PUBLIC, url.pathname));
-      const etag = `"${empreinte(contenu.toString('latin1')).slice(0, 16)}"`;
-      const cache = { 'Cache-Control': 'no-cache', ETag: etag };
-      if (req.headers['if-none-match'] === etag) { res.writeHead(304, cache); return res.end(); }
-      res.writeHead(200, { 'Content-Type': FICHIERS_PUBLICS[url.pathname], ...cache });
-      return res.end(contenu);
+      const chemin = path.join(DOSSIER_PUBLIC, url.pathname);
+      let infos;
+      try { infos = fs.statSync(chemin); } catch { return html(res, 404, pages.pageMessage({ agence, titre: 'Page introuvable', message: 'Cette page n\'existe pas.' })); }
+      let connu = etags.get(chemin);
+      if (!connu || connu.mtime !== infos.mtimeMs) {
+        connu = { mtime: infos.mtimeMs, etag: `"${empreinte(fs.readFileSync(chemin).toString('latin1')).slice(0, 16)}"` };
+        etags.set(chemin, connu);
+      }
+      const cache = { 'Cache-Control': 'no-cache', ETag: connu.etag };
+      if (req.headers['if-none-match'] === connu.etag) { res.writeHead(304, cache); return res.end(); }
+      res.writeHead(200, { 'Content-Type': vendor ? TYPES_VENDOR[vendor[1]] : FICHIERS_PUBLICS[url.pathname], ...cache });
+      return res.end(fs.readFileSync(chemin));
     }
     const trouve = trouverRoute(req.method, url.pathname);
     if (!trouve) return html(res, 404, pages.pageMessage({ agence, titre: 'Page introuvable', message: 'Cette page n\'existe pas.' }));

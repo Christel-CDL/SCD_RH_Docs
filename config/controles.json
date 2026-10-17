@@ -1,0 +1,22 @@
+{
+  "_aide": "Réglages des contrôles faits dans le téléphone avant l'envoi d'une photo, et de la taille des PDF. Modifiables sans toucher au code (redémarrer l'application ensuite). Les seuils ont été calibrés le 17/10/2026 sur des photos fictives : les modifier avec prudence.",
+  "lisibilite": {
+    "_aide": "petit_cote_min_px : résolution minimale (pixels sur le petit côté). nettete_min : score de netteté minimal, de 0 à 255 (force des contours des lettres, rapportée au contraste ; au calibrage : photo nette 120 à 210, légèrement floue mais lisible 70 à 150, floue 45 ou moins). luminosite_min / luminosite_max : luminosité moyenne acceptée, de 0 (noir) à 255 (blanc). reflet_max_pourcent : part maximale de pixels « brûlés » (blanc pur), signe d'un reflet. echecs_avant_forcer : nombre d'échecs après lequel le salarié peut envoyer quand même ; la pièce est alors marquée « à vérifier ».",
+    "petit_cote_min_px": 1000,
+    "nettete_min": 55,
+    "luminosite_min": 60,
+    "luminosite_max": 235,
+    "reflet_max_pourcent": 3,
+    "echecs_avant_forcer": 2
+  },
+  "photo": {
+    "_aide": "Réencodage des photos dans le téléphone : grand côté maximal en pixels et qualité JPEG (0 à 1).",
+    "cote_max_px": 2400,
+    "qualite_jpeg": 0.85
+  },
+  "pdf": {
+    "_aide": "Taille d'un PDF de pièce, en Ko. objectif_ko : le téléphone recompresse les photos pour rester en dessous si possible. plafond_ko : au-delà, la pièce est refusée (limite Brevo : 4 Mo par pièce jointe).",
+    "objectif_ko": 1500,
+    "plafond_ko": 3500
+  }
+}

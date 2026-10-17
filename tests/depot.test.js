@@ -11,32 +11,47 @@ import { demarrer, seConnecter, poster, lienDans, CLE_TEST } from './aide.js';
 // ── Fabriques de fichiers fictifs ─────────────────────────────────
 
 const segment = (marqueur, contenu) => {
-  const corps = Buffer.from(contenu, 'latin1');
+  const corps = Buffer.isBuffer(contenu) ? contenu : Buffer.from(contenu, 'latin1');
   const entete = Buffer.from([0xff, marqueur, 0, 0]);
   entete.writeUInt16BE(corps.length + 2, 2);
   return Buffer.concat([entete, corps]);
 };
+// En-tête SOF0 : 8 bits, hauteur, largeur, 3 composantes (couleur).
+const sof = (largeur, hauteur) => {
+  const b = Buffer.from([8, 0, 0, 0, 0, 3, 1, 0x22, 0, 2, 0x11, 1, 3, 0x11, 1]);
+  b.writeUInt16BE(hauteur, 1);
+  b.writeUInt16BE(largeur, 3);
+  return b;
+};
 // JPEG minimal (non décodable, mais à la structure correcte) avec EXIF « GPS » et commentaire.
-function jpegFictif({ metadonnees = true, image = 'PIXELS-FICTIFS' } = {}) {
+function jpegFictif({ metadonnees = true, image = 'PIXELS-FICTIFS', largeur = 1200, hauteur = 1600 } = {}) {
   return Buffer.concat([
     Buffer.from([0xff, 0xd8]),
     segment(0xe0, 'JFIF\0\x01\x01\0\0\x01\0\x01\0\0'),
     ...(metadonnees ? [segment(0xe1, 'Exif\0\0GPSLatitude=44.8;GPSLongitude=-0.6'), segment(0xfe, 'Commentaire secret')] : []),
     segment(0xdb, 'TABLE-QUANTIF'),
+    segment(0xc0, sof(largeur, hauteur)),
     segment(0xda, 'SOS'),
     Buffer.from(image, 'latin1'),
     Buffer.from([0xff, 0xd9]),
   ]);
 }
 const bloc = (type, contenu) => {
-  const donnees = Buffer.from(contenu, 'latin1');
+  const donnees = Buffer.isBuffer(contenu) ? contenu : Buffer.from(contenu, 'latin1');
   const longueur = Buffer.alloc(4);
   longueur.writeUInt32BE(donnees.length);
   return Buffer.concat([longueur, Buffer.from(type, 'latin1'), donnees, Buffer.alloc(4)]);
 };
+// IHDR : largeur, hauteur, 8 bits, couleur (2), sans entrelacement.
+const ihdr = ({ largeur = 800, hauteur = 600, couleur = 2, entrelace = 0 } = {}) => {
+  const b = Buffer.from([0, 0, 0, 0, 0, 0, 0, 0, 8, couleur, 0, 0, entrelace]);
+  b.writeUInt32BE(largeur, 0);
+  b.writeUInt32BE(hauteur, 4);
+  return b;
+};
 const pngFictif = () => Buffer.concat([
   Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-  bloc('IHDR', 'X'.repeat(13)), bloc('tEXt', 'Author\0Personne Secrete'), bloc('eXIf', 'GPS'), bloc('IDAT', 'PIXELS'), bloc('IEND', ''),
+  bloc('IHDR', ihdr()), bloc('tEXt', 'Author\0Personne Secrete'), bloc('eXIf', 'GPS'), bloc('IDAT', 'PIXELS'), bloc('IEND', ''),
 ]);
 const pdfFictif = () => Buffer.from('%PDF-1.4\n% document fictif\n%%EOF\n', 'latin1');
 const heicFictif = () => Buffer.concat([Buffer.from([0, 0, 0, 24]), Buffer.from('ftypheic\0\0\0\0mif1heic', 'latin1')]);
@@ -99,7 +114,9 @@ test('preparerFichier refuse le HEIC non converti, les autres formats et les JPE
   assert.match(preparerFichier(heicFictif()).erreur, /HEIC/);
   assert.match(preparerFichier(Buffer.from('texte')).erreur, /ni une photo/);
   assert.match(preparerFichier(jpegFictif().subarray(0, 12)).erreur, /abîmé/);
-  assert.equal(preparerFichier(pdfFictif()).type, 'application/pdf');
+  // Les PDF sont transformés en images dans le téléphone : un PDF brut (navigateur sans script) est refusé.
+  assert.match(preparerFichier(pdfFictif()).erreur, /PDF/);
+  assert.deepEqual([preparerFichier(jpegFictif()).largeur, preparerFichier(jpegFictif()).hauteur], [1200, 1600]);
 });
 
 // ── Intégration ───────────────────────────────────────────────────
@@ -111,9 +128,11 @@ async function demandeFictive(app, pieces = ['CV', 'CNI_PASS', 'RIB']) {
   return { jeton: lien.split('/d/')[1], demandeId: app.db.prepare('SELECT id FROM demandes').get().id };
 }
 
-function deposer(app, jeton, abrev, fichiers, { choix, json = true } = {}) {
+function deposer(app, jeton, abrev, fichiers, { choix, json = true, source, aVerifier } = {}) {
   const donnees = new FormData();
   if (choix) donnees.append('choix', choix);
+  if (source) donnees.append('source', source);
+  if (aVerifier) donnees.append('a_verifier', '1');
   fichiers.forEach((f, i) => donnees.append('fichier', new Blob([f]), `f${i}`));
   return fetch(`${app.base}/d/${jeton}/pieces/${abrev}`, {
     method: 'POST', body: donnees, redirect: 'manual', headers: { Origin: app.base, ...(json ? { Accept: 'application/json' } : {}) },
@@ -168,9 +187,9 @@ test('recto-verso exige deux photos ; un PDF seul suffit ; le choix CNI / passep
   try {
     const { jeton } = await demandeFictive(app, ['PERMIS', 'CNI_PASS', 'RIB']);
     assert.equal((await deposer(app, jeton, 'PERMIS', [jpegFictif()])).status, 400);
-    assert.equal((await deposer(app, jeton, 'PERMIS', [pdfFictif()])).status, 200);
+    assert.equal((await deposer(app, jeton, 'PERMIS', [jpegFictif()], { source: 'pdf' })).status, 200, 'un PDF d\'une page (transformé en image) vaut la pièce entière');
     assert.equal((await deposer(app, jeton, 'RIB', [jpegFictif(), jpegFictif()])).status, 400, 'une seule page pour un RIB');
-    assert.equal((await deposer(app, jeton, 'RIB', [pdfFictif(), jpegFictif()])).status, 400, 'un PDF doit être seul');
+    assert.equal((await deposer(app, jeton, 'RIB', [pdfFictif()])).status, 415, 'un PDF brut n\'est jamais stocké');
 
     assert.equal((await deposer(app, jeton, 'CNI_PASS', [jpegFictif()])).status, 400, 'choix manquant');
     assert.equal((await deposer(app, jeton, 'CNI_PASS', [jpegFictif()], { choix: 'RIB' })).status, 400, 'choix hors liste');
@@ -211,11 +230,11 @@ test('remplacer une pièce supprime les anciens fichiers du disque', async () =>
     await deposer(app, jeton, 'CV', [jpegFictif(), jpegFictif(), jpegFictif()]);
     const anciens = app.stockage.lister();
     assert.equal(anciens.length, 3);
-    assert.equal((await deposer(app, jeton, 'CV', [pdfFictif()])).status, 200);
+    assert.equal((await deposer(app, jeton, 'CV', [jpegFictif({ image: 'NOUVELLE-PAGE' })])).status, 200);
     const nouveaux = app.stockage.lister();
     assert.equal(nouveaux.length, 1);
     assert.ok(anciens.every((f) => !nouveaux.includes(f)));
-    assert.equal(app.db.prepare('SELECT type FROM pages').get().type, 'application/pdf');
+    assert.ok(app.stockage.lire(nouveaux[0]).toString('latin1').includes('NOUVELLE-PAGE'));
   } finally { await app.fermer(); }
 });
 
@@ -277,7 +296,7 @@ test('« Envoyer mon dossier » n\'est possible que lorsque tout est déposé', 
     await deposer(app, jeton, 'CV', [jpegFictif()]);
     assert.equal((await envoyer()).status, 409);
     await deposer(app, jeton, 'CNI_PASS', [jpegFictif(), jpegFictif()], { choix: 'CNI' });
-    await deposer(app, jeton, 'RIB', [pdfFictif()]);
+    await deposer(app, jeton, 'RIB', [jpegFictif()]);
     assert.match(await (await app.envoyer(`/d/${jeton}`)).text(), /<button type="submit" class="bouton">Envoyer mon dossier/);
 
     assert.equal((await envoyer()).status, 303);
@@ -316,10 +335,10 @@ test('supprimerFichiers efface du disque toutes les pages d\'une demande', async
   try {
     const { jeton, demandeId } = await demandeFictive(app);
     await deposer(app, jeton, 'CV', [jpegFictif(), jpegFictif()]);
-    await deposer(app, jeton, 'RIB', [pdfFictif()]);
+    await deposer(app, jeton, 'RIB', [jpegFictif()]);
     assert.equal(app.stockage.lister().length, 3);
     const { creerDepot } = await import('../src/depot.js');
-    creerDepot({ db: app.db, catalogue: null, stockage: app.stockage }).supprimerFichiers(demandeId);
+    creerDepot({ db: app.db, catalogue: null, stockage: app.stockage, controles: null }).supprimerFichiers(demandeId);
     assert.equal(app.stockage.lister().length, 0);
   } finally { await app.fermer(); }
 });

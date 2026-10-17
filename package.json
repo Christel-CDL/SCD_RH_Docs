@@ -10,6 +10,10 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --env-file=.env src/index.js",
-    "test": "node --test --test-concurrency=1 \"tests/**/*.test.js\""
+    "test": "node --test --test-concurrency=1 \"tests/**/*.test.js\"",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
   }
 }

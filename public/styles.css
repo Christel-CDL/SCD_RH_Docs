@@ -152,6 +152,16 @@ th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--
 .rgpd h3 { font-size: 1rem; margin: .75rem 0 .25rem; }
 .rgpd p { margin: 0 0 .5rem; font-size: 1rem; }
 .envoi-final { margin-top: 2rem; }
+
+/* Étape 4 : cadre-guide (le document doit remplir l'écran) et contrôle de lisibilité */
+.cadre-guide { display: flex; align-items: center; gap: .75rem; background: var(--info-fond); border-radius: .5rem; padding: .6rem .75rem; }
+.cadre-guide p { margin: 0; font-size: 1rem; }
+.cadre-dessin { flex: none; position: relative; width: 2.6rem; height: 4.2rem; border: 3px solid var(--texte); border-radius: .5rem; background: #fff; }
+.cadre-document { position: absolute; inset: .35rem .3rem; border: 2px dashed var(--accent); border-radius: .15rem;
+  background: repeating-linear-gradient(to bottom, transparent 0 .3rem, #c9d0da .3rem .4rem); }
+.controle { margin-top: .75rem; display: flex; flex-direction: column; gap: .5rem; }
+.controle p { margin: 0; }
+.emplacement.a-verifier { border-color: #8a5a00; }
 .bouton:disabled { background: #9aa6b5; cursor: not-allowed; }
 
 @media (min-width: 40rem) {

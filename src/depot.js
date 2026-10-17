@@ -2,6 +2,7 @@
 // le salarié peut partir et revenir par le même lien, remplacer une pièce, puis envoyer son dossier quand tout est déposé.
 import crypto from 'node:crypto';
 import { preparerFichier } from './fichiers.js';
+import { creerPdf, nomPdf } from './pdf.js';
 import { journaliser } from './db.js';
 
 export const LIMITES = {
@@ -9,13 +10,15 @@ export const LIMITES = {
   octetsParDemande: 80 * 1024 * 1024,
   pagesMax: 10,
 };
+// Ce que le PDF ajoute aux images (en-têtes, table des objets) : largement surestimé, pour rester sous le plafond.
+const SURCOUT_PDF = (nbPages) => 1024 + 1024 * nbPages;
 
 const identifiant = () => crypto.randomBytes(12).toString('base64url');
 
-// Nombre de fichiers attendus selon la nature de la pièce. Un PDF vaut toujours la pièce entière.
-function controlerPages(pages, fichiers) {
-  const pdf = fichiers.some((f) => f.type === 'application/pdf');
-  if (pdf) return fichiers.length === 1 ? null : 'Un PDF doit être envoyé seul : il remplace toutes les photos de la pièce.';
+// Nombre de fichiers attendus selon la nature de la pièce. Un PDF transformé en images dans le téléphone
+// vaut toujours la pièce entière (une carte scannée recto et verso sur une seule page, par exemple).
+function controlerPages(pages, fichiers, depuisPdf) {
+  if (depuisPdf) return fichiers.length <= LIMITES.pagesMax ? null : `Ce PDF a plus de ${LIMITES.pagesMax} pages.`;
   if (pages === 'recto_verso' && fichiers.length !== 2) return 'Il faut deux photos : le recto, puis le verso.';
   if (pages === 'une' && fichiers.length !== 1) return 'Il faut une seule photo.';
   if (pages === 'plusieurs' && (fichiers.length < 1 || fichiers.length > LIMITES.pagesMax)) {
@@ -24,11 +27,11 @@ function controlerPages(pages, fichiers) {
   return null;
 }
 
-export function creerDepot({ db, catalogue, stockage }) {
+export function creerDepot({ db, catalogue, stockage, controles }) {
   const requetes = {
     piece: db.prepare('SELECT * FROM pieces WHERE demande_id = ? AND abrev = ?'),
     pieces: db.prepare('SELECT * FROM pieces WHERE demande_id = ? ORDER BY rowid'),
-    pagesPiece: db.prepare('SELECT fichier FROM pages WHERE piece_id = ?'),
+    pagesPiece: db.prepare('SELECT fichier, type FROM pages WHERE piece_id = ? ORDER BY ordre'),
     nbPages: db.prepare('SELECT COUNT(*) AS n FROM pages WHERE piece_id = ?'),
     tailleDemande: db.prepare(`
       SELECT COALESCE(SUM(pg.taille), 0) AS total FROM pages pg JOIN pieces p ON p.id = pg.piece_id
@@ -36,7 +39,7 @@ export function creerDepot({ db, catalogue, stockage }) {
     supprimerPages: db.prepare('DELETE FROM pages WHERE piece_id = ?'),
     insererPage: db.prepare('INSERT INTO pages (id, piece_id, ordre, fichier, type, taille) VALUES (?, ?, ?, ?, ?, ?)'),
     marquerDeposee: db.prepare(`
-      UPDATE pieces SET statut = 'deposee', abrev_fournie = ?, a_verifier = 0, depose_le = ? WHERE id = ?`),
+      UPDATE pieces SET statut = 'deposee', abrev_fournie = ?, a_verifier = ?, depose_le = ? WHERE id = ?`),
     passerEnCours: db.prepare("UPDATE demandes SET statut = 'en_cours' WHERE id = ? AND statut = 'envoyee'"),
     marquerComplete: db.prepare("UPDATE demandes SET statut = 'complete', complete_le = ? WHERE id = ? AND statut IN ('envoyee', 'en_cours')"),
     fichiersDemande: db.prepare('SELECT pg.fichier FROM pages pg JOIN pieces p ON p.id = pg.piece_id WHERE p.demande_id = ?'),
@@ -58,6 +61,7 @@ export function creerDepot({ db, catalogue, stockage }) {
         fournie: fournie ? fournie.libelle : null,
         abrevFournie: p.abrev_fournie,
         statut: p.statut,
+        aVerifier: Boolean(p.a_verifier),
         nbPages: requetes.nbPages.get(p.id).n,
       };
     });
@@ -65,7 +69,9 @@ export function creerDepot({ db, catalogue, stockage }) {
   }
 
   // fichiers : tableau de Buffer, dans l'ordre (recto, verso, page 3…). Renvoie { ok } ou { erreur, statut }.
-  function deposer(demande, abrev, { choix = null, fichiers }) {
+  // aVerifier : le salarié a passé outre le contrôle de lisibilité (après plusieurs échecs).
+  // depuisPdf : les images viennent d'un PDF que le téléphone a transformé page par page.
+  function deposer(demande, abrev, { choix = null, fichiers, aVerifier = false, depuisPdf = false }) {
     if (!ouverte(demande)) return { erreur: 'Le délai de dépôt est dépassé. Contactez l\'agence.', statut: 410 };
     const piece = requetes.piece.get(demande.id, abrev);
     if (!piece) return { erreur: 'Cette pièce ne fait pas partie de la demande.', statut: 404 };
@@ -85,9 +91,16 @@ export function creerDepot({ db, catalogue, stockage }) {
       if (resultat.erreur) return { erreur: resultat.erreur, statut: 415 };
       prepares.push(resultat);
     }
-    const erreurPages = controlerPages(catalogue.pieces.get(fournie).pages, prepares);
+    const erreurPages = controlerPages(catalogue.pieces.get(fournie).pages, prepares, depuisPdf);
     if (erreurPages) return { erreur: erreurPages, statut: 400 };
     const taille = prepares.reduce((t, f) => t + f.contenu.length, 0);
+    // Le PDF de la pièce doit tenir dans une pièce jointe (plafond paramétrable, 3,5 Mo par défaut).
+    if (taille + SURCOUT_PDF(prepares.length) > controles.pdf.plafond_ko * 1024) {
+      return {
+        erreur: `Cette pièce est trop lourde (plus de ${(controles.pdf.plafond_ko / 1000).toLocaleString('fr-FR')} Mo). Reprenez les photos, ou envoyez moins de pages.`,
+        statut: 413,
+      };
+    }
     if (requetes.tailleDemande.get(demande.id, piece.id).total + taille > LIMITES.octetsParDemande) {
       return { erreur: 'Le dossier est trop volumineux. Contactez l\'agence.', statut: 413 };
     }
@@ -105,7 +118,7 @@ export function creerDepot({ db, catalogue, stockage }) {
     try {
       requetes.supprimerPages.run(piece.id);
       nouveaux.forEach((f, i) => requetes.insererPage.run(identifiant(), piece.id, i + 1, f.fichier, f.type, f.contenu.length));
-      requetes.marquerDeposee.run(fournie, Date.now(), piece.id);
+      requetes.marquerDeposee.run(fournie, aVerifier ? 1 : 0, Date.now(), piece.id);
       requetes.passerEnCours.run(demande.id);
       db.exec('COMMIT');
     } catch (erreur) {
@@ -127,10 +140,26 @@ export function creerDepot({ db, catalogue, stockage }) {
     return { ok: true };
   }
 
+  // Les PDF de la demande, un par pièce, fabriqués en mémoire à partir des pages chiffrées (aucune copie en clair
+  // sur le disque). Utilisé par l'envoi final (étape 5).
+  function pdfs(demande) {
+    return requetes.pieces.all(demande.id).filter((p) => p.statut === 'deposee').map((p) => {
+      const abrev = p.abrev_fournie || p.abrev;
+      const pages = requetes.pagesPiece.all(p.id).map((pg) => ({ type: pg.type, contenu: stockage.lire(pg.fichier) }));
+      return {
+        abrev,
+        nom: nomPdf(demande.nom, abrev),
+        contenu: creerPdf(pages),
+        aVerifier: Boolean(p.a_verifier),
+        controleSeulement: Boolean(catalogue.pieces.get(abrev)?.controle_seulement),
+      };
+    });
+  }
+
   // Supprime tous les fichiers d'une demande (annulation, expiration, après envoi). Les lignes suivent la demande.
   function supprimerFichiers(demandeId) {
     for (const { fichier } of requetes.fichiersDemande.all(demandeId)) stockage.supprimer(fichier);
   }
 
-  return { etat, deposer, envoyer, supprimerFichiers, ouverte };
+  return { etat, deposer, envoyer, pdfs, supprimerFichiers, ouverte };
 }

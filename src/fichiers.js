@@ -1,8 +1,11 @@
 // Contrôle des fichiers reçus : type réel (octets de signature, jamais l'extension ni le type annoncé)
 // et suppression des métadonnées (EXIF, dont la géolocalisation, XMP, commentaires, textes PNG).
 // Le navigateur réencode déjà les photos (ce qui retire l'EXIF) : ce nettoyage serveur est une seconde barrière.
+// Les PDF ne sont jamais stockés : le téléphone les transforme en images (« désarmement », étape 4) et l'application
+// refait elle-même le PDF final. Un PDF reçu tel quel (navigateur sans script) est donc refusé.
+import { analyserImage } from './pdf.js';
 
-export const TYPES_ACCEPTES = ['image/jpeg', 'image/png', 'application/pdf'];
+export const TYPES_ACCEPTES = ['image/jpeg', 'image/png'];
 const MARQUES_HEIF = new Set(['heic', 'heix', 'hevc', 'hevx', 'heim', 'heis', 'mif1', 'msf1', 'heif', 'avif', 'avis']);
 
 export function detecterType(octets) {
@@ -63,12 +66,25 @@ export function preparerFichier(octets) {
   if (type === 'image/heic') {
     return { erreur: 'Cette photo est au format HEIC. Reprenez-la avec le bouton « Prendre une photo », ou réglez l\'appareil photo sur « Le plus compatible ».' };
   }
+  if (type === 'application/pdf') {
+    return { erreur: 'Votre téléphone n\'a pas pu préparer ce PDF. Prenez plutôt chaque page en photo avec le bouton « Prendre une photo ».' };
+  }
   if (!TYPES_ACCEPTES.includes(type)) return { erreur: 'Ce fichier n\'est ni une photo (JPEG, PNG) ni un PDF.' };
+  let contenu;
   try {
-    if (type === 'image/jpeg') return { type, contenu: nettoyerJpeg(octets) };
-    if (type === 'image/png') return { type, contenu: nettoyerPng(octets) };
+    contenu = type === 'image/jpeg' ? nettoyerJpeg(octets) : nettoyerPng(octets);
   } catch {
     return { erreur: 'Ce fichier est abîmé ou incomplet. Reprenez la photo.' };
   }
-  return { type, contenu: octets };
+  // L'image doit pouvoir entrer telle quelle dans le PDF final (dimensions lisibles, variante de PNG prise en charge).
+  try {
+    const { largeur, hauteur } = analyserImage(type, contenu);
+    return { type, contenu, largeur, hauteur };
+  } catch {
+    return {
+      erreur: type === 'image/png'
+        ? 'Cette image n\'est pas prise en charge. Envoyez plutôt une photo prise avec le bouton « Prendre une photo ».'
+        : 'Ce fichier est abîmé ou incomplet. Reprenez la photo.',
+    };
+  }
 }

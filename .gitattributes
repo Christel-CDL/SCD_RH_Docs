@@ -1,0 +1,3 @@
+# Bibliothèques copiées telles quelles depuis npm : aucun changement de fin de ligne, sinon leurs empreintes
+# (public/vendor/EMPREINTES.json) ne correspondraient plus après un clonage sous Windows.
+public/vendor/** -text

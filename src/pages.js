@@ -222,6 +222,10 @@ function blocPiece({ piece, jeton, ouverte, erreur, premiereAFaire }) {
         <summary class="bouton${piece.statut === 'deposee' ? ' secondaire' : ''}">${piece.statut === 'deposee' ? 'Remplacer cette pièce' : 'Déposer cette pièce'}</summary>
         <form method="post" action="/d/${echapper(jeton)}/pieces/${piece.abrev}" enctype="multipart/form-data" class="depot" data-pages="${pages}" novalidate>
           ${choix}
+          <div class="cadre-guide">
+            <span class="cadre-dessin" aria-hidden="true"><span class="cadre-document"></span></span>
+            <p>Posez le document à plat, près d'une fenêtre. Il doit remplir presque tout l'écran, sans reflet ni doigt dessus.</p>
+          </div>
           <div class="emplacements">${emplacements}</div>
           ${pages === 'plusieurs' ? '<button type="button" class="bouton secondaire ajouter-page" hidden>Ajouter une page</button>' : ''}
           ${erreur ? message(erreur, true) : ''}
@@ -233,13 +237,14 @@ function blocPiece({ piece, jeton, ouverte, erreur, premiereAFaire }) {
     <li class="carte piece" id="piece-${piece.abrev}">
       <h2 class="carte-titre">${echapper(piece.fournie || piece.libelle)}</h2>
       <p><span class="statut statut-piece-${piece.statut}">${ETATS_PIECE[piece.statut]}</span>
-         ${piece.statut === 'deposee' ? ` · ${piece.nbPages} fichier${piece.nbPages > 1 ? 's' : ''}` : ''}</p>
+         ${piece.statut === 'deposee' ? ` · ${piece.nbPages} page${piece.nbPages > 1 ? 's' : ''}` : ''}</p>
+      ${piece.statut === 'deposee' && piece.aVerifier ? '<p class="discret">Photo peu lisible envoyée quand même : l\'agence la vérifiera et vous recontactera si besoin.</p>' : ''}
       <p class="discret">${echapper(piece.consigne)}</p>
       ${formulaire}
     </li>`;
 }
 
-export function pageDepot({ agence, demande, jeton, etat, textes, erreur = null }) {
+export function pageDepot({ agence, demande, jeton, etat, textes, controles, erreur = null }) {
   const deposees = etat.pieces.filter((p) => p.statut === 'deposee').length;
   const premiere = etat.pieces.find((p) => p.statut !== 'deposee')?.abrev;
   const rgpd = (textes.mention_rgpd || []).map((b) => `<h3>${echapper(b.titre)}</h3><p>${echapper(b.texte)}</p>`).join('');
@@ -262,8 +267,8 @@ export function pageDepot({ agence, demande, jeton, etat, textes, erreur = null 
       <summary>Besoin d'aide ? Conseils pour une bonne photo</summary>
       <ul>${aide}</ul>
     </details>
-    <noscript>${message('Votre navigateur bloque les scripts : vous pouvez quand même envoyer des photos JPEG ou PNG, ou des PDF.')}</noscript>
-    <ul class="cartes">
+    <noscript>${message('Votre navigateur bloque les scripts : vous pouvez quand même envoyer des photos (JPEG ou PNG), mais pas de PDF.')}</noscript>
+    <ul class="cartes" data-controles="${echapper(JSON.stringify({ ...controles, messages: textes.lisibilite }))}">
       ${etat.pieces.map((piece) => blocPiece({
     piece, jeton, ouverte: etat.ouverte, premiereAFaire: piece.abrev === premiere, erreur: erreur?.abrev === piece.abrev ? erreur.texte : null,
   })).join('')}

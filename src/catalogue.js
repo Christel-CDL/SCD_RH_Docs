@@ -51,11 +51,40 @@ export function chargerTextes(dossier) {
     ['nom_expediteur'], ['lien_connexion', 'sujet'], ['lien_connexion', 'texte'],
     ['invitation', 'embauche', 'sujet'], ['invitation', 'embauche', 'intro'],
     ['invitation', 'mise_a_jour', 'sujet'], ['invitation', 'mise_a_jour', 'intro'], ['invitation', 'texte'],
+    ...['petite', 'floue', 'sombre', 'claire', 'reflet', 'forcer', 'bouton_forcer', 'pdf_lecture', 'pdf_pages', 'heic'].map((m) => ['lisibilite', m]),
   ];
   for (const chemin of requis) {
     if (typeof chemin.reduce((o, k) => o?.[k], textes) !== 'string') throw new Error(`textes.json : « ${chemin.join(' › ')} » manquant`);
   }
   return textes;
+}
+
+// config/controles.json : seuils de lisibilité, réencodage des photos, taille des PDF.
+export function chargerControles(dossier) {
+  const brut = JSON.parse(fs.readFileSync(path.join(dossier, 'controles.json'), 'utf8'));
+  const bornes = {
+    'lisibilite.petit_cote_min_px': [200, 4000],
+    'lisibilite.nettete_min': [0, 255],
+    'lisibilite.luminosite_min': [0, 255],
+    'lisibilite.luminosite_max': [0, 255],
+    'lisibilite.reflet_max_pourcent': [0, 100],
+    'lisibilite.echecs_avant_forcer': [1, 10],
+    'photo.cote_max_px': [1000, 6000],
+    'photo.qualite_jpeg': [0.3, 1],
+    'pdf.objectif_ko': [100, 4000],
+    'pdf.plafond_ko': [500, 4000],
+  };
+  for (const [chemin, [min, max]] of Object.entries(bornes)) {
+    const valeur = chemin.split('.').reduce((o, k) => o?.[k], brut);
+    if (typeof valeur !== 'number' || valeur < min || valeur > max) {
+      throw new Error(`controles.json : « ${chemin.replace('.', ' › ')} » doit être un nombre entre ${min} et ${max}`);
+    }
+  }
+  const { lisibilite: l, photo, pdf } = brut;
+  if (l.luminosite_min >= l.luminosite_max) throw new Error('controles.json : luminosite_min doit être inférieure à luminosite_max');
+  if (pdf.objectif_ko > pdf.plafond_ko) throw new Error('controles.json : objectif_ko ne peut pas dépasser plafond_ko');
+  const sansAide = (o) => Object.fromEntries(Object.entries(o).filter(([k]) => k !== '_aide'));
+  return { lisibilite: sansAide(l), photo: sansAide(photo), pdf: sansAide(pdf) };
 }
 
 // Remplace {{nom}} par sa valeur. Un mot inconnu reste visible, pour qu'une faute de frappe se remarque à la relecture.

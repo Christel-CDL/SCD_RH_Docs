@@ -1,10 +1,14 @@
 // Outils HTTP communs : en-têtes de sécurité, cookies, lecture des formulaires, contrôle d'origine.
 
+// Scripts : uniquement nos fichiers (aucun script en ligne, aucun domaine tiers). blob: sert aux aperçus des photos.
+const CSP = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'";
+// Page de dépôt seulement : WebAssembly (décodeur HEIC, images des PDF), « worker » et polices de pdf.js,
+// tous servis par l'application. 'wasm-unsafe-eval' autorise la compilation de WebAssembly, pas l'eval de JavaScript.
+export const CSP_DEPOT = `${CSP.replace("script-src 'self'", "script-src 'self' 'wasm-unsafe-eval'")}; worker-src 'self'; font-src 'self'`;
+
 export function enTetesSecurite(config) {
   const entetes = {
-    // Scripts : uniquement nos fichiers (aucun script en ligne, aucun domaine tiers). blob: sert aux aperçus des photos.
-    // L'étape 4 ajoutera 'wasm-unsafe-eval' pour le recadrage (OpenCV.js), sur la seule page de dépôt.
-    'Content-Security-Policy': "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
+    'Content-Security-Policy': CSP,
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
     // same-origin : le jeton présent dans l'adresse d'un lien magique ne fuit jamais vers un autre site.
