@@ -166,7 +166,7 @@ test('les en-têtes de sécurité sont présents', async () => {
 });
 
 test('en HTTPS, le cookie est Secure, préfixé __Host- et HSTS est envoyé', async () => {
-  const { config } = lireConfig({ APP_URL: 'https://pieces.expertform.fr', ADMIN_EMAIL: 'a@b.fr', DEV_LOG_LINKS: '1' });
+  const { config } = lireConfig({ APP_URL: 'https://pieces.expertform.fr', ADMIN_EMAIL: 'a@b.fr', DEV_LOG_LINKS: '1', FILE_ENCRYPTION_KEY: 'ab'.repeat(32) });
   const cookie = cookieSession(config, 'valeur', config.dureeSessionMs);
   assert.match(cookie, /^__Host-scd_session=valeur;/);
   assert.match(cookie, /; Secure/);

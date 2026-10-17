@@ -2,8 +2,9 @@
 // Le démarrage échoue avec un message clair si un réglage indispensable manque ;
 // le journal indique la présence de chaque réglage, jamais sa valeur.
 import path from 'node:path';
+import { lireCle } from './securite/chiffrement.js';
 
-const SECRETS = ['N8N_WEBHOOK_SECRET'];
+const SECRETS = ['N8N_WEBHOOK_SECRET', 'FILE_ENCRYPTION_KEY'];
 
 export function lireConfig(env = process.env) {
   const production = env.NODE_ENV === 'production';
@@ -28,6 +29,8 @@ export function lireConfig(env = process.env) {
       webhookUrl: String(env.N8N_WEBHOOK_URL || ''),
       secret: String(env.N8N_WEBHOOK_SECRET || ''),
     },
+    // Clé AES-256 des pièces stockées : 64 caractères hexadécimaux. La perdre rend illisibles les pièces en cours.
+    cleFichiers: lireCle(env.FILE_ENCRYPTION_KEY),
     // Développement uniquement : les liens sont affichés dans la console au lieu d'être envoyés.
     devAfficherLiens: env.DEV_LOG_LINKS === '1',
   };
@@ -39,6 +42,7 @@ export function lireConfig(env = process.env) {
     if (!config.n8n.webhookUrl) problemes.push('N8N_WEBHOOK_URL manquant : aucun e-mail ne pourrait partir.');
     if (config.n8n.secret.length < 32) problemes.push('N8N_WEBHOOK_SECRET manquant ou trop court (32 caractères minimum).');
   }
+  if (!config.cleFichiers) problemes.push('FILE_ENCRYPTION_KEY manquant ou invalide (64 caractères hexadécimaux).');
   if (!config.adminEmail) problemes.push('ADMIN_EMAIL manquant : personne ne pourrait administrer l\'application.');
 
   return { config, problemes };

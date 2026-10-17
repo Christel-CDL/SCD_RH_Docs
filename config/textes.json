@@ -14,6 +14,24 @@
       "sujet": "{{agence}} – documents pour mettre à jour votre dossier",
       "intro": "Pour mettre à jour votre dossier, {{assistante}}, de l'agence {{agence}}, vous demande les documents suivants :"
     },
+    "_note": "texte commun aux deux modèles ci-dessus",
     "texte": "Bonjour {{civilite}} {{nom}},\n\n{{intro}}\n\n{{pieces}}\n\nDéposez-les avant le {{date_limite}} grâce à ce lien personnel, depuis votre téléphone :\n{{lien}}\n\nVous pouvez prendre les documents en photo, vous arrêter et revenir plus tard avec le même lien.\nNe transmettez jamais vos documents ni vos coordonnées bancaires par e-mail : utilisez uniquement ce lien. Nous ne vous demanderons jamais de mot de passe.\n\nUne question ? Répondez simplement à ce message : il arrivera à {{assistante}}.\n\n{{agence}}"
-  }
+  },
+  "_rgpd": "PROJET de mention d'information (article 13 du RGPD), affichée en tête de la page de dépôt. Les passages [À COMPLÉTER] doivent être remplis et validés par E&D (responsable de traitement) avant la mise en service.",
+  "mention_rgpd": [
+    { "titre": "Responsable du traitement", "texte": "[À COMPLÉTER : raison sociale de l'agence E&D de Pessac], [À COMPLÉTER : adresse], [À COMPLÉTER : SIRET]. Contact pour vos données : [À COMPLÉTER : adresse e-mail ou délégué à la protection des données du réseau]." },
+    { "titre": "Pourquoi ces documents ?", "texte": "Pour préparer votre embauche ou mettre à jour votre dossier du personnel, et respecter les obligations légales de l'employeur (vérification de l'identité, de l'autorisation de travail, déclarations sociales, paiement du salaire). Base légale : mesures préalables au contrat de travail et exécution de ce contrat (article 6.1.b du RGPD) ; obligations légales de l'employeur (article 6.1.c)." },
+    { "titre": "Qui les reçoit ?", "texte": "Uniquement l'assistante RH de l'agence qui vous a envoyé ce lien. L'outil est exploité pour le compte de l'agence par [À COMPLÉTER : nom de la structure prestataire] (sous-traitant), sur un serveur hébergé par Hostinger [À COMPLÉTER : pays du centre de données]. Les e-mails sont envoyés par Brevo (France). Aucun document n'est analysé par un service d'intelligence artificielle ou de reconnaissance de texte." },
+    { "titre": "Combien de temps ?", "texte": "Vos documents sont chiffrés et conservés dans cet outil seulement le temps de les transmettre à l'agence, et au plus 15 jours. Ils sont supprimés définitivement dès leur envoi, ou à l'expiration du lien. L'agence les conserve ensuite dans votre dossier du personnel, selon ses propres règles. Le bulletin n°3 du casier judiciaire et le permis de conduire sont seulement consultés par l'agence, pas archivés." },
+    { "titre": "Vos droits", "texte": "Vous pouvez accéder à vos données, les faire corriger ou effacer, demander la limitation de leur traitement ou vous y opposer, en écrivant à [À COMPLÉTER : contact de l'agence]. Si vous estimez que vos droits ne sont pas respectés, vous pouvez saisir la CNIL (cnil.fr). La photo d'identité n'est demandée qu'avec votre accord." }
+  ],
+  "aide_depot": [
+    "Posez le document à plat, sur une table, près d'une fenêtre ou sous une bonne lumière.",
+    "Cadrez tout le document : les quatre coins doivent être visibles.",
+    "Évitez les reflets : pas de flash, pas de lampe juste au-dessus.",
+    "Tenez le téléphone bien droit, au-dessus du document, et attendez que l'image soit nette.",
+    "Vous pouvez aussi envoyer un PDF (par exemple une attestation téléchargée sur ameli.fr).",
+    "Vous pouvez vous arrêter à tout moment : les pièces validées sont enregistrées. Revenez plus tard avec le même lien.",
+    "Un problème ? Répondez à l'e-mail que vous avez reçu : il arrivera à l'agence."
+  ]
 }

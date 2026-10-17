@@ -16,14 +16,17 @@ import { chargerCatalogue, chargerTextes } from './catalogue.js';
 import { creerEmails } from './emails.js';
 import { creerDemandes, validerDemande, TYPES } from './demandes.js';
 import { creerUtilisateurs } from './utilisateurs.js';
+import { creerStockage } from './stockage.js';
+import { creerDepot, LIMITES } from './depot.js';
 import { journaliser } from './db.js';
+import { empreinte } from './securite/jetons.js';
 import {
-  enTetesSecurite, cookieSession, nomCookieSession, lireCookies, lireFormulaire, origineAutorisee, adresseClient,
+  enTetesSecurite, cookieSession, nomCookieSession, lireCookies, lireFormulaire, lireMultipart, origineAutorisee, adresseClient,
 } from './http.js';
 import * as pages from './pages.js';
 
 const DOSSIER_PUBLIC = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
-const FICHIERS_PUBLICS = { '/styles.css': 'text/css; charset=utf-8' };
+const FICHIERS_PUBLICS = { '/styles.css': 'text/css; charset=utf-8', '/depot.js': 'text/javascript; charset=utf-8' };
 const QUINZE_MINUTES = 15 * 60e3;
 
 // Messages affichés après une redirection : seul un code connu passe dans l'adresse, jamais un texte saisi.
@@ -39,7 +42,7 @@ const INFOS = {
 // Le jeton du salarié est dans le chemin (/d/<jeton>) : il est masqué dans le journal d'accès.
 const cheminJournal = (url) => url.split('?')[0].replace(/^\/d\/[^/]+/, '/d/***');
 
-export function creerApp({ db, config, notificateur, catalogue, textes }) {
+export function creerApp({ db, config, notificateur, catalogue, textes, stockage }) {
   catalogue ??= chargerCatalogue(config.configDir);
   textes ??= chargerTextes(config.configDir);
   const reglages = creerReglages(db);
@@ -48,6 +51,8 @@ export function creerApp({ db, config, notificateur, catalogue, textes }) {
   const emails = creerEmails({ textes, catalogue, config });
   const demandes = creerDemandes({ db, config });
   const utilisateurs = creerUtilisateurs({ db, reglages });
+  stockage ??= creerStockage({ dataDir: config.dataDir, cle: config.cleFichiers });
+  const depot = creerDepot({ db, catalogue, stockage });
   const entetes = enTetesSecurite(config);
   const agence = config.agence;
 
@@ -64,6 +69,29 @@ export function creerApp({ db, config, notificateur, catalogue, textes }) {
     res.end();
   }
   const refuser = (res, session, texte = 'Vous n\'avez pas accès à cette page.') => html(res, 403, pages.pageMessage({ agence, session, titre: 'Accès refusé', message: texte }));
+  function envoyerJson(res, statut, corps) {
+    res.writeHead(statut, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify(corps));
+  }
+  // Demande liée au lien du salarié, ou réponse « lien inactif » déjà envoyée (null).
+  function demandeDuLien(req, res, jeton, json = false) {
+    if (limiteur.depasse(`depot:${adresseClient(req, config)}`, 120, QUINZE_MINUTES)) {
+      const trop = 'Trop de tentatives. Réessayez dans un quart d\'heure.';
+      if (json) envoyerJson(res, 429, { erreur: trop });
+      else html(res, 429, pages.pageMessage({ agence, titre: 'Trop de tentatives', message: trop }));
+      return null;
+    }
+    const demande = demandes.parJeton(jeton);
+    if (demande) return demande;
+    const texte = 'Ce lien n\'est plus valable. Contactez l\'agence qui vous l\'a envoyé.';
+    if (json) envoyerJson(res, 410, { erreur: texte });
+    else html(res, 410, pages.pageMessage({ agence, titre: 'Lien inactif', message: texte }));
+    return null;
+  }
+  function repondreDepot(res, json, demande, jeton, { statut, erreur, abrev }) {
+    if (json) return envoyerJson(res, statut, { erreur });
+    html(res, statut, pages.pageDepot({ agence, demande, jeton, etat: depot.etat(demande), textes, erreur: { abrev, texte: erreur } }));
+  }
   const pageAdmin = (session, extra = {}) => pages.pageAdminUtilisateurs({
     agence, session, utilisateurs: utilisateurs.lister(), domaines: reglages.domaines(), ...extra,
   });
@@ -173,18 +201,45 @@ export function creerApp({ db, config, notificateur, catalogue, textes }) {
       },
     },
 
-    // ── Lien du salarié (le dépôt arrive à l'étape 3) ──
+    // ── Dépôt des pièces par le salarié (lien personnel /d/<jeton>, sans compte) ──
+    // Le jeton secret dans l'adresse tient lieu de jeton CSRF : un site tiers ne le connaît pas.
     {
       m: 'GET', c: /^\/d\/([A-Za-z0-9_-]{1,100})$/, acces: 'public',
-      f: (req, res, { params }) => {
-        if (limiteur.depasse(`depot:${adresseClient(req, config)}`, 60, QUINZE_MINUTES)) {
-          return html(res, 429, pages.pageMessage({ agence, titre: 'Trop de tentatives', message: 'Trop de tentatives. Réessayez dans un quart d\'heure.' }));
+      f: (req, res, { params: [jeton] }) => {
+        const demande = demandeDuLien(req, res, jeton);
+        if (!demande) return;
+        if (demande.statut === 'complete') return html(res, 200, pages.pageDepotTermine({ agence, demande }));
+        html(res, 200, pages.pageDepot({ agence, demande, jeton, etat: depot.etat(demande), textes }));
+      },
+    },
+    {
+      m: 'POST', c: /^\/d\/([A-Za-z0-9_-]{1,100})\/pieces\/([A-Z][A-Z0-9_]{0,11})$/, acces: 'public', corps: 'multipart',
+      f: async (req, res, { params: [jeton, abrev] }) => {
+        const json = String(req.headers.accept || '').includes('application/json');
+        const demande = demandeDuLien(req, res, jeton, json);
+        if (!demande) return;
+        if (limiteur.depasse(`piece:${demande.id}`, 40, QUINZE_MINUTES)) {
+          return repondreDepot(res, json, demande, jeton, { statut: 429, erreur: 'Trop d\'envois en peu de temps. Réessayez dans un quart d\'heure.', abrev });
         }
-        const demande = demandes.parJeton(params[0]);
-        if (!demande) {
-          return html(res, 410, pages.pageMessage({ agence, titre: 'Lien inactif', message: 'Ce lien n\'est plus valable. Contactez l\'agence qui vous l\'a envoyé.' }));
+        const formulaire = await lireMultipart(req, LIMITES.octetsParFichier * LIMITES.pagesMax + 1024 * 1024);
+        const fichiers = [];
+        for (const f of formulaire.getAll('fichier')) {
+          if (typeof f === 'object' && f.size > 0) fichiers.push(Buffer.from(await f.arrayBuffer()));
         }
-        html(res, 200, pages.pageDepotProvisoire({ agence, demande, pieces: demandes.pieces(demande.id), catalogue }));
+        const resultat = depot.deposer(demande, abrev, { choix: formulaire.get('choix'), fichiers });
+        if (resultat.erreur) return repondreDepot(res, json, demande, jeton, { ...resultat, abrev });
+        if (json) return envoyerJson(res, 200, { ok: true });
+        rediriger(res, `/d/${jeton}#piece-${abrev}`);
+      },
+    },
+    {
+      m: 'POST', c: /^\/d\/([A-Za-z0-9_-]{1,100})\/envoyer$/, acces: 'public',
+      f: (req, res, { params: [jeton] }) => {
+        const demande = demandeDuLien(req, res, jeton);
+        if (!demande) return;
+        const resultat = depot.envoyer(demande);
+        if (resultat.erreur) return repondreDepot(res, false, demande, jeton, { ...resultat, abrev: null });
+        rediriger(res, `/d/${jeton}`);
       },
     },
 
@@ -247,8 +302,13 @@ export function creerApp({ db, config, notificateur, catalogue, textes }) {
     try { url = new URL(req.url, 'http://interne'); } catch { return html(res, 400, 'Requête invalide'); }
 
     if (req.method === 'GET' && FICHIERS_PUBLICS[url.pathname]) {
+      // Revalidation à chaque affichage (304 si rien n'a changé) : après une mise à jour,
+      // aucun téléphone ne garde l'ancien script face au nouveau serveur.
       const contenu = fs.readFileSync(path.join(DOSSIER_PUBLIC, url.pathname));
-      res.writeHead(200, { 'Content-Type': FICHIERS_PUBLICS[url.pathname], 'Cache-Control': 'public, max-age=3600' });
+      const etag = `"${empreinte(contenu.toString('latin1')).slice(0, 16)}"`;
+      const cache = { 'Cache-Control': 'no-cache', ETag: etag };
+      if (req.headers['if-none-match'] === etag) { res.writeHead(304, cache); return res.end(); }
+      res.writeHead(200, { 'Content-Type': FICHIERS_PUBLICS[url.pathname], ...cache });
       return res.end(contenu);
     }
     const trouve = trouverRoute(req.method, url.pathname);
@@ -265,13 +325,17 @@ export function creerApp({ db, config, notificateur, catalogue, textes }) {
         if (!session) return rediriger(res, '/connexion');
         if (route.acces === 'admin' && session.role !== 'admin') return refuser(res, session);
       }
-      const formulaire = req.method === 'POST' ? await lireFormulaire(req) : null;
+      const formulaire = req.method === 'POST' && route.corps !== 'multipart' ? await lireFormulaire(req) : null;
       if (formulaire && route.acces !== 'public' && !auth.csrfValide(session, formulaire.get('csrf'))) {
         return refuser(res, session, 'La page a expiré. Rechargez-la et recommencez.');
       }
       await route.f(req, res, { url, params, session, jetonSession, formulaire });
     } catch (erreur) {
-      if (erreur.status === 413 || erreur.status === 415) return html(res, erreur.status, 'Requête refusée');
+      if ([400, 413, 415].includes(erreur.status)) {
+        const texte = erreur.status === 413 ? 'Envoi trop volumineux : 10 Mo au plus par fichier.' : 'Requête refusée.';
+        if (String(req.headers.accept || '').includes('application/json')) return envoyerJson(res, erreur.status, { erreur: texte });
+        return html(res, erreur.status, pages.pageMessage({ agence, titre: 'Envoi refusé', message: texte }));
+      }
       console.error('Erreur interne :', erreur.message);
       if (!res.headersSent) html(res, 500, pages.pageMessage({ agence, titre: 'Erreur', message: 'Une erreur est survenue. Réessayez plus tard.' }));
     }
@@ -287,5 +351,5 @@ export function creerApp({ db, config, notificateur, catalogue, textes }) {
     traiter(req, res);
   });
   serveur.on('close', () => clearInterval(minuterie));
-  return { serveur, auth, demandes };
+  return { serveur, auth, demandes, depot, stockage };
 }

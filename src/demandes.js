@@ -52,7 +52,8 @@ export function creerDemandes({ db, config }) {
     insererPiece: db.prepare('INSERT INTO pieces (id, demande_id, abrev) VALUES (?, ?, ?)'),
     supprimer: db.prepare('DELETE FROM demandes WHERE id = ?'),
     parId: db.prepare('SELECT * FROM demandes WHERE id = ?'),
-    parJeton: db.prepare(`SELECT * FROM demandes WHERE jeton_empreinte = ? AND statut IN ('envoyee', 'en_cours') AND expire_le > ?`),
+    // Le lien reste lisible une fois le dossier complet (écran de confirmation) ; annulé ou expiré, il ne mène plus à rien.
+    parJeton: db.prepare(`SELECT * FROM demandes WHERE jeton_empreinte = ? AND statut IN ('envoyee', 'en_cours', 'complete') AND expire_le > ?`),
     pieces: db.prepare('SELECT abrev, abrev_fournie, statut, a_verifier FROM pieces WHERE demande_id = ? ORDER BY rowid'),
     lister: db.prepare(`
       SELECT d.id, d.type, d.civilite, d.nom, d.statut, d.cree_le, d.date_limite,

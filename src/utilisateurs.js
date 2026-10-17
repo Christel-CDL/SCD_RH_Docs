@@ -13,6 +13,9 @@ export const ACTIONS = {
   utilisateur_reactive: 'Adresse réactivée',
   utilisateur_supprime: 'Adresse supprimée',
   domaines_modifies: 'Domaines autorisés modifiés',
+  piece_deposee: 'Pièce déposée par le salarié',
+  piece_remplacee: 'Pièce remplacée par le salarié',
+  dossier_complet: 'Dossier complet envoyé par le salarié',
 };
 
 export function creerUtilisateurs({ db, reglages }) {

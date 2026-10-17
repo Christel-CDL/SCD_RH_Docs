@@ -2,8 +2,9 @@
 
 export function enTetesSecurite(config) {
   const entetes = {
-    // Étape 1 : aucune page n'exécute de script. Les étapes suivantes ouvriront script-src 'self' (et wasm pour OpenCV).
-    'Content-Security-Policy': "default-src 'none'; style-src 'self'; img-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
+    // Scripts : uniquement nos fichiers (aucun script en ligne, aucun domaine tiers). blob: sert aux aperçus des photos.
+    // L'étape 4 ajoutera 'wasm-unsafe-eval' pour le recadrage (OpenCV.js), sur la seule page de dépôt.
+    'Content-Security-Policy': "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
     // same-origin : le jeton présent dans l'adresse d'un lien magique ne fuit jamais vers un autre site.
@@ -36,6 +37,31 @@ export function lireCookies(req) {
     if (i > 0) resultat[morceau.slice(0, i)] = morceau.slice(i + 1);
   }
   return resultat;
+}
+
+// Corps brut (dépôt de fichiers), avec une taille maximale vérifiée au fil de la lecture.
+export async function lireCorps(req, max) {
+  if (Number(req.headers['content-length']) > max) throw Object.assign(new Error('trop gros'), { status: 413 });
+  let taille = 0;
+  const morceaux = [];
+  for await (const morceau of req) {
+    taille += morceau.length;
+    if (taille > max) throw Object.assign(new Error('trop gros'), { status: 413 });
+    morceaux.push(morceau);
+  }
+  return Buffer.concat(morceaux);
+}
+
+// Formulaire multipart (fichiers) : lu par l'analyseur intégré à Node (Response.formData), sans dépendance.
+export async function lireMultipart(req, max) {
+  const type = String(req.headers['content-type'] || '');
+  if (!type.startsWith('multipart/form-data')) throw Object.assign(new Error('type'), { status: 415 });
+  const corps = await lireCorps(req, max);
+  try {
+    return await new Response(corps, { headers: { 'Content-Type': type } }).formData();
+  } catch {
+    throw Object.assign(new Error('multipart'), { status: 400 });
+  }
 }
 
 export async function lireFormulaire(req, max = 8192) {

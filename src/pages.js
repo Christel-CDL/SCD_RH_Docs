@@ -1,5 +1,6 @@
 // Pages HTML rendues côté serveur. Tout texte variable passe par echapper().
-// Vocabulaire simple, gros boutons, une seule action principale par écran. Aucun script : tout marche par formulaires.
+// Vocabulaire simple, gros boutons, une seule action principale par écran. Tout marche par formulaires ;
+// seule la page de dépôt ajoute un script (public/depot.js), qui améliore les photos sans être indispensable.
 import { dateCourte, dateHeure, dateLongue } from './dates.js';
 import { TYPES, STATUTS } from './demandes.js';
 import { ACTIONS } from './utilisateurs.js';
@@ -12,7 +13,7 @@ const csrf = (session) => `<input type="hidden" name="csrf" value="${echapper(se
 const message = (texte, erreur = false) => (texte
   ? `<p class="message${erreur ? ' erreur' : ''}" role="${erreur ? 'alert' : 'status'}">${echapper(texte)}</p>` : '');
 
-function gabarit({ titre, contenu, session = null, agence, large = false }) {
+function gabarit({ titre, contenu, session = null, agence, large = false, script = null }) {
   const barre = session
     ? `<nav class="navigation" aria-label="Menu">
          <a href="/">Mes demandes</a>
@@ -30,6 +31,7 @@ function gabarit({ titre, contenu, session = null, agence, large = false }) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${echapper(titre)} – ${echapper(agence)}</title>
   <link rel="stylesheet" href="/styles.css">
+  ${script ? `<script src="${script}" defer></script>` : ''}
 </head>
 <body>
   <a class="evitement" href="#contenu">Aller au contenu</a>
@@ -181,17 +183,108 @@ export function pageNouvelleDemande({ agence, session, catalogue, type, saisie =
   });
 }
 
-// ── Lien du salarié (provisoire : le dépôt arrive à l'étape 3) ─────
+// ── Dépôt des pièces (salarié, sur téléphone) ─────────────────────
 
-export function pageDepotProvisoire({ agence, demande, pieces, catalogue }) {
+const ETATS_PIECE = { a_faire: 'À faire', deposee: 'Déposée ✓', a_refaire: 'À refaire' };
+const ETIQUETTES = { recto_verso: ['Recto', 'Verso'], une: ['Photo'], plusieurs: ['Page 1'] };
+
+// Un emplacement = une page : deux boutons (appareil photo, fichier) et un aperçu rempli par le script.
+function emplacement(abrev, numero, etiquette) {
+  const id = `${abrev}-${numero}`;
+  return `
+          <div class="emplacement" data-numero="${numero}">
+            <p class="etiquette">${echapper(etiquette)}</p>
+            <div class="boutons-capture">
+              <label class="bouton secondaire" for="${id}-photo">Prendre une photo</label>
+              <input class="cache" id="${id}-photo" type="file" name="fichier" accept="image/*" capture="environment">
+              <label class="bouton secondaire" for="${id}-fichier">Choisir un fichier</label>
+              <input class="cache" id="${id}-fichier" type="file" name="fichier" accept="image/*,application/pdf,.heic,.heif">
+            </div>
+            <img class="apercu" alt="Aperçu : ${echapper(etiquette)}" hidden>
+            <p class="nom-fichier" hidden></p>
+          </div>`;
+}
+
+function blocPiece({ piece, jeton, ouverte, erreur, premiereAFaire }) {
+  const pages = piece.choix ? 'recto_verso' : piece.pages; // pour un choix, on prévoit le cas le plus long
+  const choix = piece.choix ? `
+        <fieldset class="choix-piece">
+          <legend>Quelle pièce fournissez-vous ?</legend>
+          ${piece.choix.map((c) => `
+          <span class="choix">
+            <input type="radio" id="${piece.abrev}-choix-${c.abrev}" name="choix" value="${c.abrev}" data-pages="${c.pages}" required${piece.abrevFournie === c.abrev ? ' checked' : ''}>
+            <label for="${piece.abrev}-choix-${c.abrev}">${echapper(c.libelle)}</label>
+          </span>`).join('')}
+        </fieldset>` : '';
+  const emplacements = ETIQUETTES[pages].map((e, i) => emplacement(piece.abrev, i + 1, e)).join('');
+  const formulaire = ouverte ? `
+      <details${erreur || (premiereAFaire && piece.statut !== 'deposee') ? ' open' : ''}>
+        <summary class="bouton${piece.statut === 'deposee' ? ' secondaire' : ''}">${piece.statut === 'deposee' ? 'Remplacer cette pièce' : 'Déposer cette pièce'}</summary>
+        <form method="post" action="/d/${echapper(jeton)}/pieces/${piece.abrev}" enctype="multipart/form-data" class="depot" data-pages="${pages}" novalidate>
+          ${choix}
+          <div class="emplacements">${emplacements}</div>
+          ${pages === 'plusieurs' ? '<button type="button" class="bouton secondaire ajouter-page" hidden>Ajouter une page</button>' : ''}
+          ${erreur ? message(erreur, true) : ''}
+          <p class="etat-envoi" role="status" aria-live="polite"></p>
+          <button type="submit" class="bouton">Valider cette pièce</button>
+        </form>
+      </details>` : '';
+  return `
+    <li class="carte piece" id="piece-${piece.abrev}">
+      <h2 class="carte-titre">${echapper(piece.fournie || piece.libelle)}</h2>
+      <p><span class="statut statut-piece-${piece.statut}">${ETATS_PIECE[piece.statut]}</span>
+         ${piece.statut === 'deposee' ? ` · ${piece.nbPages} fichier${piece.nbPages > 1 ? 's' : ''}` : ''}</p>
+      <p class="discret">${echapper(piece.consigne)}</p>
+      ${formulaire}
+    </li>`;
+}
+
+export function pageDepot({ agence, demande, jeton, etat, textes, erreur = null }) {
+  const deposees = etat.pieces.filter((p) => p.statut === 'deposee').length;
+  const premiere = etat.pieces.find((p) => p.statut !== 'deposee')?.abrev;
+  const rgpd = (textes.mention_rgpd || []).map((b) => `<h3>${echapper(b.titre)}</h3><p>${echapper(b.texte)}</p>`).join('');
+  const aide = (textes.aide_depot || []).map((t) => `<li>${echapper(t)}</li>`).join('');
   return gabarit({
     agence,
     titre: 'Vos documents',
+    script: '/depot.js',
     contenu: `
     <h1>Bonjour ${echapper(demande.civilite)} ${echapper(demande.nom)}</h1>
-    <p>L'agence ${echapper(agence)} vous demande les documents suivants, à déposer avant le ${echapper(dateLongue(demande.date_limite))} :</p>
-    <ul>${pieces.map((p) => `<li>${echapper(catalogue.pieces.get(p.abrev)?.libelle || p.abrev)}</li>`).join('')}</ul>
-    ${message('Le dépôt en ligne sera disponible très bientôt sur cette même page.')}`,
+    <details class="rgpd">
+      <summary>Vos données personnelles : qui les reçoit, combien de temps</summary>
+      ${rgpd}
+    </details>
+    ${etat.ouverte
+    ? `<p>L'agence ${echapper(agence)} vous demande les documents ci-dessous. Déposez-les avant le <strong>${echapper(dateLongue(demande.date_limite))}</strong>.</p>`
+    : message('Le délai de dépôt est dépassé : vous ne pouvez plus déposer de pièce. Contactez l\'agence.', true)}
+    <p class="progression" aria-live="polite">Pièces déposées : <strong>${deposees} sur ${etat.pieces.length}</strong></p>
+    <details class="aide">
+      <summary>Besoin d'aide ? Conseils pour une bonne photo</summary>
+      <ul>${aide}</ul>
+    </details>
+    <noscript>${message('Votre navigateur bloque les scripts : vous pouvez quand même envoyer des photos JPEG ou PNG, ou des PDF.')}</noscript>
+    <ul class="cartes">
+      ${etat.pieces.map((piece) => blocPiece({
+    piece, jeton, ouverte: etat.ouverte, premiereAFaire: piece.abrev === premiere, erreur: erreur?.abrev === piece.abrev ? erreur.texte : null,
+  })).join('')}
+    </ul>
+    ${etat.ouverte ? `
+    <form method="post" action="/d/${echapper(jeton)}/envoyer" class="formulaire envoi-final">
+      ${erreur?.abrev === null ? message(erreur.texte, true) : ''}
+      <button type="submit" class="bouton"${etat.complet ? '' : ' disabled aria-disabled="true"'}>Envoyer mon dossier</button>
+      <p class="discret">${etat.complet ? 'Toutes les pièces sont déposées : vous pouvez envoyer votre dossier à l\'agence.' : 'Ce bouton s\'activera quand toutes les pièces seront déposées.'}</p>
+    </form>` : ''}`,
+  });
+}
+
+export function pageDepotTermine({ agence, demande }) {
+  return gabarit({
+    agence,
+    titre: 'Dossier envoyé',
+    contenu: `
+    <h1>Merci ${echapper(demande.civilite)} ${echapper(demande.nom)}</h1>
+    ${message('Votre dossier est complet : il a bien été envoyé à l\'agence.')}
+    <p>Vos documents seront supprimés de cet outil dès qu'ils auront été transmis à l'agence. Vous pouvez fermer cette page.</p>`,
   });
 }
 

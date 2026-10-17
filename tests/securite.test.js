@@ -57,10 +57,19 @@ test('la configuration de production refuse les réglages dangereux', () => {
 test('une configuration de production complète est acceptée', () => {
   const { problemes, config } = lireConfig({
     NODE_ENV: 'production', APP_URL: 'https://pieces.expertform.fr/', ADMIN_EMAIL: 'Admin@Exemple.fr',
-    N8N_WEBHOOK_URL: 'http://n8n:5678/webhook/x', N8N_WEBHOOK_SECRET: 's'.repeat(40),
+    N8N_WEBHOOK_URL: 'http://n8n:5678/webhook/x', N8N_WEBHOOK_SECRET: 's'.repeat(40), FILE_ENCRYPTION_KEY: 'cd'.repeat(32),
   });
   assert.deepEqual(problemes, []);
   assert.equal(config.appUrl, 'https://pieces.expertform.fr');
   assert.equal(config.adminEmail, 'admin@exemple.fr');
   assert.equal(config.dureeSessionMs, 8 * 3600e3);
+});
+
+test('.env.example liste tous les réglages exigés au démarrage', async () => {
+  // Défaut vu le 17/10/2026 : FILE_ENCRYPTION_KEY manquait, « npm run dev » échouait après la copie du modèle.
+  const fs = await import('node:fs');
+  const modele = fs.readFileSync(new URL('../.env.example', import.meta.url), 'utf8');
+  for (const nom of ['APP_URL', 'DATA_DIR', 'ADMIN_EMAIL', 'ADMIN_NOM', 'N8N_WEBHOOK_URL', 'N8N_WEBHOOK_SECRET', 'FILE_ENCRYPTION_KEY', 'DEV_LOG_LINKS']) {
+    assert.match(modele, new RegExp(`^${nom}=`, 'm'), `${nom} absent de .env.example`);
+  }
 });

@@ -84,6 +84,19 @@ const MIGRATIONS = [
   `
   ALTER TABLE demandes ADD COLUMN date_limite INTEGER NOT NULL DEFAULT 0;
   `,
+  // 3 — pages déposées (une ligne par fichier chiffré : recto, verso, page 3…) et date de complétude
+  `
+  CREATE TABLE pages (
+    id        TEXT PRIMARY KEY,
+    piece_id  TEXT NOT NULL REFERENCES pieces (id) ON DELETE CASCADE,
+    ordre     INTEGER NOT NULL,
+    fichier   TEXT NOT NULL UNIQUE,      -- nom aléatoire du fichier chiffré dans DATA_DIR/pieces
+    type      TEXT NOT NULL CHECK (type IN ('image/jpeg', 'image/png', 'application/pdf')),
+    taille    INTEGER NOT NULL,
+    UNIQUE (piece_id, ordre)
+  );
+  ALTER TABLE demandes ADD COLUMN complete_le INTEGER;
+  `,
 ];
 
 export function ouvrirBase(dataDir) {
