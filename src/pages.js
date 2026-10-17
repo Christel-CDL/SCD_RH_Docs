@@ -114,6 +114,8 @@ export function pageAccueil({ agence, session, demandes, filtre = null, info = '
         <p>${echapper(TYPES[d.type])} · demandée le ${dateCourte(d.cree_le)}</p>
         <p><span class="statut statut-${d.statut}">${echapper(STATUTS[d.statut])}</span>
            ${['envoyee', 'en_cours'].includes(d.statut) ? ` · pièces déposées : ${d.deposees || 0} sur ${d.total}` : ''}</p>
+        ${d.statut === 'complete' && d.envoi === 'echec' ? '<p class="erreur-champ">L\'envoi des pièces a échoué : l\'administratrice est prévenue.</p>' : ''}
+        ${d.statut === 'transmise' ? `<p class="discret">Pièces envoyées par e-mail le ${dateCourte(d.transmise_le)}, puis supprimées de l'outil.</p>` : ''}
         ${['envoyee', 'en_cours'].includes(d.statut) ? `<p class="discret">Date limite : ${dateCourte(d.date_limite)}</p>` : ''}
       </li>`).join('');
   return gabarit({
@@ -295,7 +297,22 @@ export function pageDepotTermine({ agence, demande }) {
 
 // ── Administration ────────────────────────────────────────────────
 
-export function pageAdminUtilisateurs({ agence, session, utilisateurs, domaines, info = '', erreur = '', saisie = {} }) {
+export function pageAdminUtilisateurs({
+  agence, session, utilisateurs, domaines, envoisEnEchec = [], emailsDuJour = 0, quota = 0, info = '', erreur = '', saisie = {},
+}) {
+  const echecs = envoisEnEchec.map((e) => `
+      <li class="carte">
+        <p class="carte-titre">Demande <code>${echapper(e.demande_id.slice(0, 8))}</code></p>
+        <p>Abandonné le ${dateHeure(e.alerte_le)} après ${e.tentatives} tentatives. Les pièces restent chiffrées jusqu'à la purge à 15 jours.</p>
+        <form method="post" action="/admin/envois/${echapper(e.id)}/relancer">
+          ${csrf(session)}
+          <button type="submit" class="bouton petit">Relancer l'envoi</button>
+        </form>
+      </li>`).join('');
+  const blocEnvois = `
+    <h2>Envois à l'assistante</h2>
+    <p>E-mails envoyés aujourd'hui par l'outil : <strong>${emailsDuJour}</strong> sur une part de ${quota} par jour (compte Brevo partagé).</p>
+    ${echecs ? `<p class="erreur-champ">Envois en échec : réparez d'abord n8n ou Brevo, puis relancez.</p><ul class="cartes">${echecs}</ul>` : '<p>Aucun envoi en échec.</p>'}`;
   const hors = (u) => u.role !== 'admin' && domaines.length && !domaines.includes(u.email.split('@')[1]);
   const lignes = utilisateurs.map((u) => `
       <li class="carte">
@@ -341,6 +358,7 @@ export function pageAdminUtilisateurs({ agence, session, utilisateurs, domaines,
       <input id="domaines" name="domaines" type="text" value="${echapper(domaines.join(', '))}" placeholder="exemple.fr, autre-exemple.fr">
       <button type="submit" class="bouton secondaire">Enregistrer les domaines</button>
     </form>
+    ${blocEnvois}
     <h2>Adresses autorisées</h2>
     <ul class="cartes">${lignes}</ul>`,
   });

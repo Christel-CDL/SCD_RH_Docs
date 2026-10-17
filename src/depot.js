@@ -142,18 +142,23 @@ export function creerDepot({ db, catalogue, stockage, controles }) {
 
   // Les PDF de la demande, un par pièce, fabriqués en mémoire à partir des pages chiffrées (aucune copie en clair
   // sur le disque). Utilisé par l'envoi final (étape 5).
-  function pdfs(demande) {
-    return requetes.pieces.all(demande.id).filter((p) => p.statut === 'deposee').map((p) => {
-      const abrev = p.abrev_fournie || p.abrev;
-      const pages = requetes.pagesPiece.all(p.id).map((pg) => ({ type: pg.type, contenu: stockage.lire(pg.fichier) }));
-      return {
-        abrev,
-        nom: nomPdf(demande.nom, abrev),
-        contenu: creerPdf(pages),
-        aVerifier: Boolean(p.a_verifier),
-        controleSeulement: Boolean(catalogue.pieces.get(abrev)?.controle_seulement),
-      };
-    });
+  // avecContenu : false pour la seule description (nom, libellé, mentions) ; seulement : une seule pièce (abréviation fournie).
+  function pdfs(demande, { avecContenu = true, seulement = null } = {}) {
+    return requetes.pieces.all(demande.id)
+      .filter((p) => p.statut === 'deposee' && (!seulement || (p.abrev_fournie || p.abrev) === seulement))
+      .map((p) => {
+        const abrev = p.abrev_fournie || p.abrev;
+        const description = {
+          abrev,
+          nom: nomPdf(demande.nom, abrev),
+          libelle: catalogue.pieces.get(abrev)?.libelle || abrev,
+          aVerifier: Boolean(p.a_verifier),
+          controleSeulement: Boolean(catalogue.pieces.get(abrev)?.controle_seulement),
+        };
+        if (!avecContenu) return description;
+        const pages = requetes.pagesPiece.all(p.id).map((pg) => ({ type: pg.type, contenu: stockage.lire(pg.fichier) }));
+        return { ...description, contenu: creerPdf(pages) };
+      });
   }
 
   // Supprime tous les fichiers d'une demande (annulation, expiration, après envoi). Les lignes suivent la demande.

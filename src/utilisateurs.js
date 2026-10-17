@@ -16,6 +16,14 @@ export const ACTIONS = {
   piece_deposee: 'Pièce déposée par le salarié',
   piece_remplacee: 'Pièce remplacée par le salarié',
   dossier_complet: 'Dossier complet envoyé par le salarié',
+  envoi_transmis_a_n8n: 'Envoi à l\'assistante confié à n8n',
+  envoi_a_reessayer: 'Envoi à l\'assistante en échec, nouvelle tentative prévue',
+  envoi_en_echec: 'Envoi à l\'assistante abandonné (administratrice prévenue)',
+  envoi_relance: 'Envoi à l\'assistante relancé',
+  envoi_relance_par_admin: 'Relance d\'un envoi par l\'administratrice',
+  dossier_transmis_et_purge: 'Pièces reçues par l\'assistante, puis supprimées de l\'outil',
+  purge_securite: 'Demande expirée effacée (purge à 15 jours)',
+  purge_fichiers_orphelins: 'Fichiers orphelins effacés',
 };
 
 export function creerUtilisateurs({ db, reglages }) {

@@ -1,0 +1,308 @@
+{
+  "name": "SCD – Événements de l'application",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "scd-evenements",
+        "responseMode": "responseNode",
+        "options": { "rawBody": true }
+      },
+      "id": "6b1d4c1f-0001-4d66-8b62-0000000000b1",
+      "name": "Événement reçu",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 200],
+      "webhookId": "2f6b0d8e-5c1a-4e3b-9d7f-5c0d1e2f3a4b"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Vérifie que l'appel vient bien de l'application : signature HMAC-SHA256 de « horodatage.corps » avec le secret\n// partagé, horodatage de moins de 5 minutes. Le corps est lu brut, octet pour octet, tel qu'il a été signé.\nconst crypto = require('crypto');\nconst entree = $input.first();\nconst entetes = entree.json.headers || {};\nconst horodatage = String(entetes['x-scd-horodatage'] || '');\nconst signature = String(entetes['x-scd-signature'] || '');\nconst brut = (await this.helpers.getBinaryDataBuffer(0, 'data')).toString('utf8');\nconst attendu = crypto.createHmac('sha256', $env.SCD_WEBHOOK_SECRET).update(`${horodatage}.${brut}`).digest('hex');\nconst a = Buffer.from(signature);\nconst b = Buffer.from(attendu);\nconst valide = a.length === b.length && crypto.timingSafeEqual(a, b) && Math.abs(Date.now() - Number(horodatage)) < 5 * 60 * 1000;\nif (!valide) return [{ json: { valide: false } }];\nconst { evenement, donnees } = JSON.parse(brut);\nreturn [{ json: { valide: true, evenement, donnees } }];"
+      },
+      "id": "6b1d4c1f-0002-4d66-8b62-0000000000b2",
+      "name": "Vérifier la signature",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 },
+          "conditions": [
+            {
+              "id": "c1000000-0000-4000-8000-000000000001",
+              "leftValue": "={{ $json.valide }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "6b1d4c1f-0003-4d66-8b62-0000000000b3",
+      "name": "Signature valide ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [440, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"erreur\": \"signature refusée\" } }}",
+        "options": { "responseCode": 401 }
+      },
+      "id": "6b1d4c1f-0004-4d66-8b62-0000000000b4",
+      "name": "Refuser (401)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [660, 400]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
+                "conditions": [
+                  {
+                    "id": "c2000000-0000-4000-8000-000000000001",
+                    "leftValue": "={{ $json.evenement }}",
+                    "rightValue": "email",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "e-mail simple"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
+                "conditions": [
+                  {
+                    "id": "c2000000-0000-4000-8000-000000000002",
+                    "leftValue": "={{ $json.evenement }}",
+                    "rightValue": "envoi_dossier",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "dossier complet"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6b1d4c1f-0005-4d66-8b62-0000000000b5",
+      "name": "Quel événement ?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [660, 120]
+    },
+    {
+      "parameters": {
+        "jsCode": "// E-mail simple (lien de connexion, invitation, alerte) : l'application l'a entièrement rédigé.\nreturn [{ json: $input.first().json.donnees }];"
+      },
+      "id": "6b1d4c1f-0006-4d66-8b62-0000000000b6",
+      "name": "E-mail simple",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": { "__rl": true, "value": "", "mode": "list" },
+        "mode": "each",
+        "options": { "waitForSubWorkflow": true }
+      },
+      "id": "6b1d4c1f-0007-4d66-8b62-0000000000b7",
+      "name": "Envoyer l'e-mail simple",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [1100, 0],
+      "onError": "continueErrorOutput",
+      "notes": "Choisir le workflow « SCD – Envoyer un e-mail » dans la liste.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"ok\": true } }}",
+        "options": { "responseCode": 200 }
+      },
+      "id": "6b1d4c1f-0008-4d66-8b62-0000000000b8",
+      "name": "E-mail parti (200)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [1320, -80]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"erreur\": \"envoi impossible\" } }}",
+        "options": { "responseCode": 502 }
+      },
+      "id": "6b1d4c1f-0009-4d66-8b62-0000000000b9",
+      "name": "E-mail non parti (502)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [1320, 80]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"ok\": true } }}",
+        "options": { "responseCode": 200 }
+      },
+      "id": "6b1d4c1f-0010-4d66-8b62-0000000000c0",
+      "name": "Dossier accepté (200)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [880, 240]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Dossier complet : télécharge chaque PDF sur le port interne de l'application (réseau privé, secret),\n// puis prépare un élément par e-mail avec ses pièces jointes. Les PDF restent en mémoire, jamais sur le disque.\nconst secret = $env.SCD_INTERNAL_API_SECRET;\nconst { messages, confirmation, echec } = $input.first().json.donnees;\nconst sortie = [];\nfor (const message of messages) {\n  const { pieces_jointes: piecesJointes, ...reste } = message;\n  try {\n    const binary = {};\n    const noms = [];\n    for (const [i, pj] of piecesJointes.entries()) {\n      const contenu = await this.helpers.httpRequest({\n        url: pj.url,\n        headers: { Authorization: `Bearer ${secret}` },\n        encoding: 'arraybuffer',\n        timeout: 30000,\n      });\n      const cle = `pj_${i + 1}`;\n      binary[cle] = await this.helpers.prepareBinaryData(Buffer.from(contenu), pj.nom, 'application/pdf');\n      noms.push(cle);\n    }\n    sortie.push({ json: { ...reste, pieces_binaires: noms.join(','), confirmation, echec, pret: true }, binary });\n  } catch (erreur) {\n    // L'application dira à l'administratrice que l'envoi a échoué, et réessaiera plus tard.\n    sortie.push({ json: { numero: reste.numero, confirmation, echec, pret: false } });\n  }\n}\nreturn sortie;"
+      },
+      "id": "6b1d4c1f-0011-4d66-8b62-0000000000c1",
+      "name": "Préparer les pièces jointes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 240]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 },
+          "conditions": [
+            {
+              "id": "c3000000-0000-4000-8000-000000000001",
+              "leftValue": "={{ $json.pret }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "6b1d4c1f-0012-4d66-8b62-0000000000c2",
+      "name": "Pièces prêtes ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1320, 240]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": { "__rl": true, "value": "", "mode": "list" },
+        "mode": "each",
+        "options": { "waitForSubWorkflow": true }
+      },
+      "id": "6b1d4c1f-0013-4d66-8b62-0000000000c3",
+      "name": "Envoyer l'e-mail du dossier",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [1540, 160],
+      "onError": "continueErrorOutput",
+      "notes": "Choisir le workflow « SCD – Envoyer un e-mail » dans la liste.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.confirmation }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $env.SCD_INTERNAL_API_SECRET }}" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ message: $json.numero }) }}",
+        "options": {}
+      },
+      "id": "6b1d4c1f-0014-4d66-8b62-0000000000c4",
+      "name": "Confirmer l'envoi",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1760, 80],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Préparer les pièces jointes').item.json.echec }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $env.SCD_INTERNAL_API_SECRET }}" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ message: $('Préparer les pièces jointes').item.json.numero }) }}",
+        "options": {}
+      },
+      "id": "6b1d4c1f-0015-4d66-8b62-0000000000c5",
+      "name": "Signaler l'échec",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1760, 320],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    }
+  ],
+  "connections": {
+    "Événement reçu": { "main": [[{ "node": "Vérifier la signature", "type": "main", "index": 0 }]] },
+    "Vérifier la signature": { "main": [[{ "node": "Signature valide ?", "type": "main", "index": 0 }]] },
+    "Signature valide ?": {
+      "main": [
+        [{ "node": "Quel événement ?", "type": "main", "index": 0 }],
+        [{ "node": "Refuser (401)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Quel événement ?": {
+      "main": [
+        [{ "node": "E-mail simple", "type": "main", "index": 0 }],
+        [{ "node": "Dossier accepté (200)", "type": "main", "index": 0 }]
+      ]
+    },
+    "E-mail simple": { "main": [[{ "node": "Envoyer l'e-mail simple", "type": "main", "index": 0 }]] },
+    "Envoyer l'e-mail simple": {
+      "main": [
+        [{ "node": "E-mail parti (200)", "type": "main", "index": 0 }],
+        [{ "node": "E-mail non parti (502)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Dossier accepté (200)": { "main": [[{ "node": "Préparer les pièces jointes", "type": "main", "index": 0 }]] },
+    "Préparer les pièces jointes": { "main": [[{ "node": "Pièces prêtes ?", "type": "main", "index": 0 }]] },
+    "Pièces prêtes ?": {
+      "main": [
+        [{ "node": "Envoyer l'e-mail du dossier", "type": "main", "index": 0 }],
+        [{ "node": "Signaler l'échec", "type": "main", "index": 0 }]
+      ]
+    },
+    "Envoyer l'e-mail du dossier": {
+      "main": [
+        [{ "node": "Confirmer l'envoi", "type": "main", "index": 0 }],
+        [{ "node": "Signaler l'échec", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveManualExecutions": false,
+    "saveExecutionProgress": false
+  },
+  "pinData": {}
+}

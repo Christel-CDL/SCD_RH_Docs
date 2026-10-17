@@ -97,6 +97,28 @@ const MIGRATIONS = [
   );
   ALTER TABLE demandes ADD COLUMN complete_le INTEGER;
   `,
+  // 4 — envoi final à l'assistante par n8n (un envoi par dossier complet, éventuellement découpé en plusieurs e-mails)
+  //     et compteur quotidien des e-mails (compte Brevo partagé avec d'autres applications).
+  `
+  CREATE TABLE envois (
+    id                   TEXT PRIMARY KEY,           -- 192 bits aléatoires : identifie l'envoi auprès de n8n
+    demande_id           TEXT NOT NULL UNIQUE REFERENCES demandes (id) ON DELETE CASCADE,
+    plan                 TEXT NOT NULL,              -- JSON : abréviations des pièces de chaque e-mail, [["CV","CNI"],["RIB"]]
+    confirmes            TEXT NOT NULL DEFAULT '[]', -- JSON : numéros des e-mails dont n8n a confirmé l'envoi
+    statut               TEXT NOT NULL DEFAULT 'a_notifier' CHECK (statut IN ('a_notifier', 'notifie', 'echec', 'termine')),
+    tentatives           INTEGER NOT NULL DEFAULT 0,
+    prochaine_tentative  INTEGER NOT NULL,
+    notifie_le           INTEGER,
+    alerte_le            INTEGER,
+    cree_le              INTEGER NOT NULL
+  );
+  CREATE INDEX envois_a_traiter ON envois (statut, prochaine_tentative);
+
+  CREATE TABLE compteur_emails (
+    jour  TEXT PRIMARY KEY,                          -- AAAA-MM-JJ, heure de Paris
+    n     INTEGER NOT NULL DEFAULT 0
+  );
+  `,
 ];
 
 export function ouvrirBase(dataDir) {

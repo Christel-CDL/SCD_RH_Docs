@@ -12,7 +12,11 @@ import { fileURLToPath } from 'node:url';
 import { creerAuth, EMAIL } from './auth.js';
 import { creerLimiteur } from './securite/limiteur.js';
 import { creerReglages, analyserDomaines } from './reglages.js';
-import { chargerCatalogue, chargerTextes, chargerControles } from './catalogue.js';
+import { chargerCatalogue, chargerTextes, chargerControles, chargerReglagesEnvoi } from './catalogue.js';
+import { creerCompteur } from './compteur.js';
+import { creerEnvoi } from './envoi.js';
+import { creerPurge } from './purge.js';
+import { creerServeurInterne } from './interne.js';
 import { creerEmails } from './emails.js';
 import { creerDemandes, validerDemande, TYPES } from './demandes.js';
 import { creerUtilisateurs } from './utilisateurs.js';
@@ -42,27 +46,45 @@ const INFOS = {
   reactive: 'L\'adresse est réactivée.',
   supprime: 'L\'adresse a été supprimée.',
   domaines: 'Les domaines autorisés sont enregistrés.',
+  relance: 'L\'envoi est relancé. Vérifiez dans quelques minutes qu\'il a disparu de la liste des envois en échec.',
+  relance_impossible: 'Cet envoi ne peut plus être relancé (déjà parti, ou purgé).',
 };
 
 // Le jeton du salarié est dans le chemin (/d/<jeton>) : il est masqué dans le journal d'accès.
 const cheminJournal = (url) => url.split('?')[0].replace(/^\/d\/[^/]+/, '/d/***');
 
-export function creerApp({ db, config, notificateur, catalogue, textes, controles, stockage }) {
+export function creerApp({ db, config, notificateur: notificateurBrut, catalogue, textes, controles, reglagesEnvoi, stockage }) {
   catalogue ??= chargerCatalogue(config.configDir);
   textes ??= chargerTextes(config.configDir);
   controles ??= chargerControles(config.configDir);
+  reglagesEnvoi ??= chargerReglagesEnvoi(config.configDir);
   const reglages = creerReglages(db);
   const auth = creerAuth({ db, config, reglages });
   const limiteur = creerLimiteur();
   const emails = creerEmails({ textes, catalogue, config });
+  // Tout passe par le compteur : chaque e-mail parti est compté (quota du compte Brevo partagé).
+  const notificateur = creerCompteur({ db, notificateur: notificateurBrut, reglagesEnvoi, alerte: emails.alerte });
   const demandes = creerDemandes({ db, config });
   const utilisateurs = creerUtilisateurs({ db, reglages });
   stockage ??= creerStockage({ dataDir: config.dataDir, cle: config.cleFichiers });
   const depot = creerDepot({ db, catalogue, stockage, controles });
+  const envoi = creerEnvoi({ db, config, emails, depot, notificateur, reglagesEnvoi });
+  const purge = creerPurge({ db, stockage });
+  purge.purger();
   const entetes = enTetesSecurite(config);
   const agence = config.agence;
 
-  const minuterie = setInterval(() => { auth.purger(); limiteur.nettoyer(); }, 10 * 60e3);
+  // Chaque minute : nouvelles tentatives d'envoi arrivées à échéance. Toutes les 10 minutes : sessions et limiteur.
+  // Toutes les heures : purge de sécurité (demandes expirées, fichiers orphelins).
+  let tours = 0;
+  const minuterie = setInterval(() => {
+    tours += 1;
+    envoi.tic().catch((e) => console.error('Envois en attente :', e.message));
+    if (tours % 10 === 0) { auth.purger(); limiteur.nettoyer(); }
+    if (tours % 60 === 0) {
+      try { purge.purger(); } catch (e) { console.error('Purge de sécurité :', e.message); }
+    }
+  }, 60e3);
   minuterie.unref();
 
   function html(res, statut, contenu, extra = {}) {
@@ -99,7 +121,7 @@ export function creerApp({ db, config, notificateur, catalogue, textes, controle
     html(res, statut, pages.pageDepot({ agence, demande, jeton, etat: depot.etat(demande), textes, controles, erreur: { abrev, texte: erreur } }), { 'Content-Security-Policy': CSP_DEPOT });
   }
   const pageAdmin = (session, extra = {}) => pages.pageAdminUtilisateurs({
-    agence, session, utilisateurs: utilisateurs.lister(), domaines: reglages.domaines(), ...extra,
+    agence, session, utilisateurs: utilisateurs.lister(), domaines: reglages.domaines(), envoisEnEchec: envoi.enEchec(), emailsDuJour: notificateur.aujourdhui(), quota: reglagesEnvoi.quotaJournalier, ...extra,
   });
 
   const routes = [
@@ -247,12 +269,23 @@ export function creerApp({ db, config, notificateur, catalogue, textes, controle
         if (!demande) return;
         const resultat = depot.envoyer(demande);
         if (resultat.erreur) return repondreDepot(res, false, demande, jeton, { ...resultat, abrev: null });
+        // L'envoi à l'assistante part en arrière-plan : le salarié n'attend pas n8n (nouvelles tentatives si besoin).
+        envoi.lancer(demande.id).catch((e) => console.error('Lancement de l\'envoi :', e.message));
         rediriger(res, `/d/${jeton}`);
       },
     },
 
     // ── Administration ──
     { m: 'GET', c: '/admin', acces: 'admin', f: (req, res) => rediriger(res, '/admin/utilisateurs') },
+    {
+      // Relance d'un envoi abandonné après toutes les tentatives (n8n ou Brevo réparé entre-temps).
+      m: 'POST', c: /^\/admin\/envois\/([A-Za-z0-9_-]{32})\/relancer$/, acces: 'admin',
+      f: async (req, res, { params: [id], session }) => {
+        const ok = await envoi.relancer(id);
+        journaliser(db, 'envoi_relance_par_admin', { utilisateurId: session.id });
+        rediriger(res, `/admin/utilisateurs?ok=${ok ? 'relance' : 'relance_impossible'}`);
+      },
+    },
     {
       m: 'GET', c: '/admin/utilisateurs', acces: 'admin',
       f: (req, res, { url, session }) => html(res, 200, pageAdmin(session, { info: INFOS[url.searchParams.get('ok')] || '' })),
@@ -366,5 +399,6 @@ export function creerApp({ db, config, notificateur, catalogue, textes, controle
     traiter(req, res);
   });
   serveur.on('close', () => clearInterval(minuterie));
-  return { serveur, auth, demandes, depot, stockage };
+  const serveurInterne = creerServeurInterne({ config, envoi });
+  return { serveur, serveurInterne, auth, demandes, depot, stockage, envoi, purge, notificateur };
 }

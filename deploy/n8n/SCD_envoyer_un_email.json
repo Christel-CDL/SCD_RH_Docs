@@ -1,0 +1,111 @@
+{
+  "name": "SCD – Envoyer un e-mail",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "5a0c3b0e-0001-4c55-9a51-0000000000a1",
+      "name": "Déclencheur",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 },
+          "conditions": [
+            {
+              "id": "c0000000-0000-4000-8000-000000000001",
+              "leftValue": "={{ $env.EMAIL_PROVIDER }}",
+              "rightValue": "outlook",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "5a0c3b0e-0002-4c55-9a51-0000000000a2",
+      "name": "Outlook ? (sinon Brevo)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $json.nom_expediteur }} <{{ $env.SCD_EXPEDITEUR }}>",
+        "toEmail": "={{ $json.destinataire }}",
+        "subject": "={{ $json.sujet }}",
+        "emailFormat": "text",
+        "text": "={{ $json.texte }}",
+        "options": {
+          "appendAttribution": false,
+          "fileAttachments": "={{ $json.pieces_binaires || '' }}",
+          "replyTo": "={{ $json.repondre_a || '' }}"
+        }
+      },
+      "id": "5a0c3b0e-0003-4c55-9a51-0000000000a3",
+      "name": "Brevo (SMTP)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [460, 100],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "smtp": { "id": "", "name": "Brevo SMTP SCD" }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "toRecipients": "={{ $json.destinataire }}",
+        "subject": "={{ $json.sujet }}",
+        "bodyContent": "={{ $json.texte }}",
+        "additionalFields": {
+          "bodyContentType": "Text",
+          "replyTo": "={{ $json.repondre_a || '' }}"
+        }
+      },
+      "id": "5a0c3b0e-0004-4c55-9a51-0000000000a4",
+      "name": "Outlook (phase 2, à finir)",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [460, -100],
+      "notes": "Phase 2 seulement. Avant la bascule : connecter l'identifiant OAuth de la boîte de l'agence et ajouter les pièces jointes (propriétés binaires listées dans pieces_binaires). Voir deploy/GUIDE_DEPLOIEMENT.md.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Rend au workflow appelant ce qu'il a envoyé (sans les pièces jointes) : il en a besoin pour confirmer l'envoi.\nreturn $('Déclencheur').all().map((item) => ({ json: { ...item.json, envoye: true } }));"
+      },
+      "id": "5a0c3b0e-0005-4c55-9a51-0000000000a5",
+      "name": "Résultat",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 0]
+    }
+  ],
+  "connections": {
+    "Déclencheur": { "main": [[{ "node": "Outlook ? (sinon Brevo)", "type": "main", "index": 0 }]] },
+    "Outlook ? (sinon Brevo)": {
+      "main": [
+        [{ "node": "Outlook (phase 2, à finir)", "type": "main", "index": 0 }],
+        [{ "node": "Brevo (SMTP)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Brevo (SMTP)": { "main": [[{ "node": "Résultat", "type": "main", "index": 0 }]] },
+    "Outlook (phase 2, à finir)": { "main": [[{ "node": "Résultat", "type": "main", "index": 0 }]] }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveManualExecutions": false,
+    "saveExecutionProgress": false
+  },
+  "pinData": {}
+}

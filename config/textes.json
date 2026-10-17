@@ -35,6 +35,21 @@
     "Vous pouvez vous arrêter à tout moment : les pièces validées sont enregistrées. Revenez plus tard avec le même lien.",
     "Un problème ? Répondez à l'e-mail que vous avez reçu : il arrivera à l'agence."
   ],
+  "_envoi_final": "E-mail envoyé à l'assistante qui a fait la demande, avec les pièces en PDF. {{type}} vaut « Embauche » ou « Mise à jour » ; {{partie}} vaut « (1/2) », « (2/2) »… quand l'envoi est découpé, sinon rien. Ne jamais y reprendre de donnée tirée des pièces.",
+  "envoi_final": {
+    "sujet": "[{{type}}] Pièces reçues – {{civilite}} {{nom}} – demande du {{date_demande}}{{partie}}",
+    "texte": "Bonjour {{assistante}},\n\n{{civilite}} {{nom}} a déposé les pièces que vous lui avez demandées le {{date_demande}}. Vous les trouverez en pièces jointes, en PDF :\n\n{{liste}}\n{{suite}}{{mentions}}\nCes pièces viennent d'être supprimées de l'outil de collecte : ce message en est le seul exemplaire. Classez-les dans le dossier du salarié.\n\nCet e-mail est envoyé automatiquement : pour toute question sur le dossier, contactez directement {{civilite}} {{nom}}.",
+    "a_verifier": "À VÉRIFIER : photo peu lisible, envoyée par le salarié malgré le contrôle de lisibilité.",
+    "controle_seulement": "CONTRÔLE SEULEMENT : à consulter puis supprimer, ne pas archiver.",
+    "mention_a_verifier": "Les pièces marquées « À VÉRIFIER » ont été photographiées dans de mauvaises conditions : vérifiez qu'elles sont lisibles et redemandez-les si besoin.\n",
+    "mention_controle_seulement": "Les pièces marquées « CONTRÔLE SEULEMENT » (casier judiciaire, permis de conduire) ne doivent pas être conservées : consultez-les, puis supprimez ce message et ses pièces jointes. La CNIL interdit d'en garder une copie.\n",
+    "suite": "Les autres pièces de ce dossier arrivent dans un autre e-mail {{autres}}.\n"
+  },
+  "_alerte": "E-mail envoyé à l'administratrice quand un envoi échoue ou que le quota d'e-mails du jour approche. Jamais de nom ni de donnée de salarié : seulement l'identifiant de la demande.",
+  "alerte": {
+    "sujet": "[Collecte de pièces] Alerte : {{titre}}",
+    "texte": "Bonjour,\n\n{{detail}}\n\nIdentifiant technique : {{reference}}\n\nCe message est envoyé automatiquement par l'outil de collecte de pièces."
+  },
   "_lisibilite": "Messages affichés au salarié quand une photo ne passe pas le contrôle de lisibilité (seuils dans controles.json). « forcer » s'affiche après plusieurs échecs, avec un bouton pour envoyer quand même.",
   "lisibilite": {
     "petite": "La photo est trop petite pour être lue. Rapprochez-vous : le document doit remplir presque tout l'écran.",

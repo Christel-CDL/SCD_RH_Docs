@@ -51,6 +51,8 @@ export function chargerTextes(dossier) {
     ['nom_expediteur'], ['lien_connexion', 'sujet'], ['lien_connexion', 'texte'],
     ['invitation', 'embauche', 'sujet'], ['invitation', 'embauche', 'intro'],
     ['invitation', 'mise_a_jour', 'sujet'], ['invitation', 'mise_a_jour', 'intro'], ['invitation', 'texte'],
+    ...['sujet', 'texte', 'a_verifier', 'controle_seulement', 'mention_a_verifier', 'mention_controle_seulement', 'suite'].map((m) => ['envoi_final', m]),
+    ['alerte', 'sujet'], ['alerte', 'texte'],
     ...['petite', 'floue', 'sombre', 'claire', 'reflet', 'forcer', 'bouton_forcer', 'pdf_lecture', 'pdf_pages', 'heic'].map((m) => ['lisibilite', m]),
   ];
   for (const chemin of requis) {
@@ -85,6 +87,28 @@ export function chargerControles(dossier) {
   if (pdf.objectif_ko > pdf.plafond_ko) throw new Error('controles.json : objectif_ko ne peut pas dépasser plafond_ko');
   const sansAide = (o) => Object.fromEntries(Object.entries(o).filter(([k]) => k !== '_aide'));
   return { lisibilite: sansAide(l), photo: sansAide(photo), pdf: sansAide(pdf) };
+}
+
+// config/envoi.json : découpage des envois, quota d'e-mails, nouvelles tentatives.
+export function chargerReglagesEnvoi(dossier) {
+  const brut = JSON.parse(fs.readFileSync(path.join(dossier, 'envoi.json'), 'utf8'));
+  const nombre = (cle, min, max) => {
+    if (typeof brut[cle] !== 'number' || brut[cle] < min || brut[cle] > max) {
+      throw new Error(`envoi.json : « ${cle} » doit être un nombre entre ${min} et ${max}`);
+    }
+    return brut[cle];
+  };
+  const delais = brut.nouvelles_tentatives_minutes;
+  if (!Array.isArray(delais) || delais.length < 1 || delais.length > 10 || delais.some((d) => typeof d !== 'number' || d < 1 || d > 1440)) {
+    throw new Error('envoi.json : « nouvelles_tentatives_minutes » doit lister de 1 à 10 délais, en minutes (1 à 1440)');
+  }
+  return {
+    seuilDecoupageOctets: nombre('seuil_decoupage_mo', 4, 19) * 1024 * 1024,
+    quotaJournalier: nombre('quota_journalier', 1, 300),
+    alerteQuotaPourcent: nombre('alerte_quota_pourcent', 10, 100),
+    delaisMs: delais.map((d) => d * 60e3),
+    silenceMs: nombre('silence_alerte_heures', 1, 48) * 3600e3,
+  };
 }
 
 // Remplace {{nom}} par sa valeur. Un mot inconnu reste visible, pour qu'une faute de frappe se remarque à la relecture.

@@ -1,0 +1,96 @@
+# Projet Docker Compose « scd-pieces » du VPS Hostinger : collecte de pièces E&D Pessac + son n8n DÉDIÉ.
+# Projet SÉPARÉ de « root » (Traefik, n8n général, Suivi PENA) et de « app-constats » : le déployer ou le supprimer
+# ne touche jamais aux autres. Il se branche sur le réseau root_default pour que Traefik (HTTPS) le serve.
+# Ne jamais nommer ce projet « root » : un projet de même nom remplace l'existant.
+#
+# hPanel → VPS → Docker Manager → projet scd-pieces → coller ce fichier, renseigner les variables, Déployer.
+# Guide pas à pas : deploy/GUIDE_DEPLOIEMENT.md.
+# Prérequis : paquet GHCR scd-rh-docs en visibilité publique (l'image ne contient ni donnée ni secret).
+#
+# Les secrets ne sont JAMAIS écrits ici : variables d'environnement du projet dans hPanel.
+services:
+  scd-pieces-app:
+    image: ghcr.io/christel-cdl/scd-rh-docs:latest
+    restart: always
+    environment:
+      APP_URL: https://pieces.expertform.fr
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_NOM: ${ADMIN_NOM}
+      FILE_ENCRYPTION_KEY: ${FILE_ENCRYPTION_KEY}          # 64 caractères hexadécimaux ; la perdre rend illisibles les pièces en cours
+      # Événements vers le n8n dédié, par le réseau privé du projet (jamais par Internet).
+      N8N_WEBHOOK_URL: http://scd-pieces-n8n:5678/webhook/scd-evenements
+      N8N_WEBHOOK_SECRET: ${N8N_WEBHOOK_SECRET}
+      # Port interne où n8n télécharge les PDF : non routé par Traefik, protégé par son propre secret.
+      INTERNAL_URL: http://scd-pieces-app:3001
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
+    volumes:
+      - scd-pieces-data:/data                              # base et pièces chiffrées : NE PAS supprimer ce volume
+    networks:
+      - root_default
+      - scd-interne
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=root_default"
+      - "traefik.http.routers.scd-pieces.rule=Host(`pieces.expertform.fr`)"
+      - "traefik.http.routers.scd-pieces.entrypoints=web,websecure"
+      - "traefik.http.routers.scd-pieces.tls=true"
+      - "traefik.http.routers.scd-pieces.tls.certresolver=mytlschallenge"
+      - "traefik.http.services.scd-pieces.loadbalancer.server.port=3000"
+
+  scd-pieces-n8n:
+    image: docker.n8n.io/n8nio/n8n:2.43.5                 # même version que le n8n général du VPS ; version figée
+    restart: always
+    environment:
+      N8N_HOST: n8n-pieces.srv1102696.hstgr.cloud
+      N8N_PROTOCOL: https
+      N8N_PORT: "5678"
+      N8N_EDITOR_BASE_URL: https://n8n-pieces.srv1102696.hstgr.cloud/
+      GENERIC_TIMEZONE: Europe/Paris
+      TZ: Europe/Paris
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}            # chiffre les identifiants (Brevo) dans n8n ; ne jamais le changer
+      # RGPD : aucune exécution conservée (ni réussie, ni en échec), donc aucune pièce dans l'historique de n8n.
+      EXECUTIONS_DATA_SAVE_ON_SUCCESS: none
+      EXECUTIONS_DATA_SAVE_ON_ERROR: none
+      EXECUTIONS_DATA_SAVE_ON_PROGRESS: "false"
+      EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS: "false"
+      # « false » est voulu : avec « true », n8n se contente de MARQUER l'exécution à supprimer et ne l'efface que plus
+      # tard (pièces jointes comprises, vérifié le 17/10/2026 sur n8n 2.43.5). Avec « false », il l'efface aussitôt.
+      EXECUTIONS_DATA_PRUNE: "false"
+      DB_SQLITE_VACUUM_ON_STARTUP: "true"                  # à chaque redémarrage, réécrit la base : rien ne reste dans l'espace libéré
+      N8N_DEFAULT_BINARY_DATA_MODE: default                # pièces jointes en mémoire seulement, jamais écrites sur le disque de n8n
+      # Les workflows SCD lisent leurs réglages ci-dessous ($env) et vérifient la signature HMAC (module crypto).
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      NODE_FUNCTION_ALLOW_BUILTIN: crypto
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_VERSION_NOTIFICATIONS_ENABLED: "false"
+      N8N_PERSONALIZATION_ENABLED: "false"
+      # Réglages des workflows SCD.
+      EMAIL_PROVIDER: brevo                                # brevo (phase 1) ou outlook (phase 2)
+      SCD_EXPEDITEUR: pieces@expertform.fr                 # domaine expertform.fr vérifié chez Brevo
+      SCD_WEBHOOK_SECRET: ${N8N_WEBHOOK_SECRET}            # même valeur que dans l'application
+      SCD_INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}      # même valeur que dans l'application
+    volumes:
+      - scd-pieces-n8n:/home/node/.n8n                     # workflows et identifiants chiffrés ; aucune pièce
+    networks:
+      - root_default
+      - scd-interne
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=root_default"
+      # Seul l'éditeur est publié. Les webhooks (/webhook…) ne sont PAS joignables depuis Internet :
+      # l'application les appelle par le réseau privé scd-interne.
+      - "traefik.http.routers.scd-pieces-n8n.rule=Host(`n8n-pieces.srv1102696.hstgr.cloud`) && !PathPrefix(`/webhook`)"
+      - "traefik.http.routers.scd-pieces-n8n.entrypoints=web,websecure"
+      - "traefik.http.routers.scd-pieces-n8n.tls=true"
+      - "traefik.http.routers.scd-pieces-n8n.tls.certresolver=mytlschallenge"
+      - "traefik.http.services.scd-pieces-n8n.loadbalancer.server.port=5678"
+
+volumes:
+  scd-pieces-data:
+  scd-pieces-n8n:
+
+networks:
+  root_default:
+    external: true
+  scd-interne:                                             # réseau privé de l'application et de son n8n
+    internal: true                                         # aucune sortie vers Internet par ce réseau

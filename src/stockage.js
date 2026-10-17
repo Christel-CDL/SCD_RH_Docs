@@ -33,5 +33,21 @@ export function creerStockage({ dataDir, cle }) {
   // Pour la purge de sécurité et les vérifications : fichiers présents sur le disque.
   const lister = () => fs.readdirSync(dossier).filter((f) => f.endsWith('.bin')).map((f) => f.slice(0, -4));
 
-  return { ecrire, lire, supprimer, lister, dossier };
+  // Purge de sécurité : efface tout fichier qui n'appartient plus à aucune page (connus : noms encore en base),
+  // et les écritures interrompues (.tmp), s'ils ont plus de ageMs (pour ne pas toucher une écriture en cours).
+  function purgerOrphelins(connus, ageMs) {
+    const limite = Date.now() - ageMs;
+    let n = 0;
+    for (const f of fs.readdirSync(dossier)) {
+      const chemin = path.join(dossier, f);
+      const orphelin = f.endsWith('.tmp') || (f.endsWith('.bin') && !connus.has(f.slice(0, -4)));
+      if (orphelin && fs.statSync(chemin).mtimeMs < limite) {
+        fs.rmSync(chemin, { force: true });
+        n += 1;
+      }
+    }
+    return n;
+  }
+
+  return { ecrire, lire, supprimer, lister, purgerOrphelins, dossier };
 }

@@ -56,8 +56,9 @@ export function creerDemandes({ db, config }) {
     parJeton: db.prepare(`SELECT * FROM demandes WHERE jeton_empreinte = ? AND statut IN ('envoyee', 'en_cours', 'complete') AND expire_le > ?`),
     pieces: db.prepare('SELECT abrev, abrev_fournie, statut, a_verifier FROM pieces WHERE demande_id = ? ORDER BY rowid'),
     lister: db.prepare(`
-      SELECT d.id, d.type, d.civilite, d.nom, d.statut, d.cree_le, d.date_limite,
-             COUNT(p.id) AS total, SUM(p.statut = 'deposee') AS deposees
+      SELECT d.id, d.type, d.civilite, d.nom, d.statut, d.cree_le, d.date_limite, d.transmise_le,
+             COUNT(p.id) AS total, SUM(p.statut = 'deposee') AS deposees,
+             (SELECT e.statut FROM envois e WHERE e.demande_id = d.id) AS envoi
       FROM demandes d LEFT JOIN pieces p ON p.demande_id = d.id
       WHERE d.utilisateur_id = ? AND (? IS NULL OR d.type = ?)
       GROUP BY d.id ORDER BY d.cree_le DESC LIMIT 200`),
