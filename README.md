@@ -7,7 +7,7 @@ Cahier des charges : `OneDrive - CDL EXPERTISES\DEV-CONSULT\SCD\SCD Services\PRO
 | Étape | Contenu | État |
 |---|---|---|
 | 1 | Squelette, base de données, liens magiques | **fait** |
-| 2 | Formulaire de demande, invitation, administration de la liste autorisée | à faire |
+| 2 | Formulaire de demande, invitation, administration de la liste autorisée | **fait** |
 | 3 | Dépôt avec brouillon (pièces chiffrées AES-256-GCM) | à faire |
 | 4 | Contrôle de lisibilité, génération des PDF | à faire |
 | 5 | Workflow n8n d'envoi final, purge vérifiée | à faire |
@@ -16,11 +16,21 @@ Cahier des charges : `OneDrive - CDL EXPERTISES\DEV-CONSULT\SCD\SCD Services\PRO
 ## Choix techniques
 
 - **Node 24, sans framework et sans dépendance npm** à ce stade. Le serveur HTTP est le module `node:http`. La base est **SQLite**, avec le module `node:sqlite` intégré à Node. Moins il y a de dépendances, moins il y a de failles à surveiller (`npm audit`).
-- **Pages rendues côté serveur.** À l'étape 1, aucune page n'exécute de JavaScript, ce qui permet la CSP la plus stricte (`default-src 'none'`).
+- **Pages rendues côté serveur.** Aux étapes 1 et 2, aucune page n'exécute de JavaScript, ce qui permet la CSP la plus stricte (`default-src 'none'`).
 - **Tous les e-mails passent par n8n** (instance dédiée), via des webhooks signés HMAC-SHA256 (`src/notifications.js`). L'application n'envoie jamais d'e-mail elle-même.
 - **Projet distinct de Constats et de PENA :** son propre dépôt, son image, sa base, ses secrets et son projet Docker. Seul le Traefik du VPS est partagé.
 
-## Sécurité déjà en place (étape 1)
+## Ce qui se modifie sans toucher au code
+
+- `config/pieces.json` : liste des pièces (libellé, pages, « contrôle seulement », consigne au salarié) et modèles « embauche » / « mise à jour ». Une erreur de saisie bloque le démarrage avec un message précis.
+- `config/textes.json` : textes des e-mails (connexion, invitations), nom d'expéditeur. Les mots entre `{{ }}` sont remplacés automatiquement.
+- Écran **Administration** : adresses autorisées (ajout, désactivation, suppression avec confirmation), domaines autorisés, journal d'activité.
+
+Après une modification d'un fichier `config/`, redémarrer l'application (en production : nouvelle image, puis Deploy).
+
+Les écrans de réglage des durées et des textes depuis l'administration arriveront avec les relances (étape 6).
+
+## Sécurité déjà en place (étapes 1 et 2)
 
 | Mesure | Où |
 |---|---|
@@ -31,9 +41,13 @@ Cahier des charges : `OneDrive - CDL EXPERTISES\DEV-CONSULT\SCD\SCD Services\PRO
 | Session de 8 h stockée côté serveur ; cookie `HttpOnly`, `Secure`, `SameSite=Lax`, préfixe `__Host-` ; désactiver un compte coupe sa session immédiatement | `src/auth.js`, `src/http.js` |
 | CSRF : contrôle de l'origine sur tout POST, jeton CSRF de session sur les actions connectées | `src/http.js`, `src/app.js` |
 | Limitation de débit : 10 demandes par IP et 5 par adresse e-mail par quart d'heure ; 30 essais de lien par IP | `src/app.js` |
-| En-têtes : CSP stricte, HSTS, `nosniff`, `X-Frame-Options`, `Referrer-Policy: no-referrer`, `noindex` | `src/http.js` |
+| En-têtes : CSP stricte, HSTS, `nosniff`, `X-Frame-Options`, `Referrer-Policy: same-origin`, `noindex` | `src/http.js` |
 | Journaux sans chaîne de requête (les jetons n'apparaissent jamais) ; journal d'activité sans nom, sans e-mail de salarié ni contenu | `src/app.js`, `src/db.js` |
 | SQLite `secure_delete` : les données supprimées sont écrasées sur le disque | `src/db.js` |
+| Lien du salarié : 256 bits, empreinte seule en base, dans le chemin `/d/…` masqué dans le journal d'accès | `src/demandes.js`, `src/app.js` |
+| Contrôle d'accès centralisé : chaque route déclare « public », « session » ou « admin », vérifié avant tout traitement | `src/app.js` |
+| Si l'invitation ne part pas, la demande est supprimée aussitôt : aucune donnée de salarié orpheline | `src/app.js` |
+| Invitation : civilité, nom, liste des pièces, date limite, agence, nom de l'assistante ; réponse adressée à l'assistante (`Reply-To`) ; aucune demande de mot de passe ni de coordonnées bancaires | `config/textes.json` |
 
 ## Développement local
 
@@ -41,7 +55,7 @@ Cahier des charges : `OneDrive - CDL EXPERTISES\DEV-CONSULT\SCD\SCD Services\PRO
 Copy-Item .env.example .env
 ```
 
-Dans `.env`, renseignez `ADMIN_EMAIL` avec une adresse fictive, puis lancez :
+Dans `.env`, renseignez `ADMIN_EMAIL` et `ADMIN_NOM` (valeurs fictives), puis lancez :
 
 ```powershell
 npm run dev

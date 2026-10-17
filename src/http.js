@@ -6,8 +6,9 @@ export function enTetesSecurite(config) {
     'Content-Security-Policy': "default-src 'none'; style-src 'self'; img-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
-    // no-referrer : le jeton présent dans l'adresse d'un lien magique ne fuit jamais vers un autre site.
-    'Referrer-Policy': 'no-referrer',
+    // same-origin : le jeton présent dans l'adresse d'un lien magique ne fuit jamais vers un autre site.
+    // (Pas « no-referrer » : Chrome enverrait alors « Origin: null » sur nos propres formulaires.)
+    'Referrer-Policy': 'same-origin',
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
     'Cross-Origin-Opener-Policy': 'same-origin',
     'Cross-Origin-Resource-Policy': 'same-origin',
@@ -53,8 +54,10 @@ export async function lireFormulaire(req, max = 8192) {
 // Une requête qui modifie quelque chose doit venir de l'application elle-même.
 export function origineAutorisee(req, config) {
   const origine = req.headers.origin;
-  if (origine) return origine === new URL(config.appUrl).origin;
   const site = req.headers['sec-fetch-site'];
+  // « null » : certains navigateurs masquent l'origine (politique de référent, redirection) ; on se fie alors à Sec-Fetch-Site.
+  if (origine && origine !== 'null') return origine === new URL(config.appUrl).origin;
+  if (origine === 'null') return site === 'same-origin';
   return !site || site === 'same-origin' || site === 'none';
 }
 

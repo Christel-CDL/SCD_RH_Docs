@@ -80,6 +80,10 @@ const MIGRATIONS = [
     valeur  TEXT NOT NULL
   );
   `,
+  // 2 — date limite affichée au salarié (J + durée − 1, 18 h, heure de Paris), distincte de l'expiration (purge)
+  `
+  ALTER TABLE demandes ADD COLUMN date_limite INTEGER NOT NULL DEFAULT 0;
+  `,
 ];
 
 export function ouvrirBase(dataDir) {
@@ -116,9 +120,10 @@ export function journaliser(db, action, { utilisateurId = null, demandeId = null
 }
 
 // L'administratrice déclarée dans ADMIN_EMAIL existe toujours, active et admin.
-export function assurerAdmin(db, email) {
+// Son nom (ADMIN_NOM) apparaît dans les invitations qu'elle envoie elle-même.
+export function assurerAdmin(db, email, nom = '') {
   db.prepare(`
-    INSERT INTO utilisateurs (email, nom, role, actif, cree_le) VALUES (?, 'Administratrice', 'admin', 1, ?)
-    ON CONFLICT (email) DO UPDATE SET role = 'admin', actif = 1
-  `).run(email, Date.now());
+    INSERT INTO utilisateurs (email, nom, role, actif, cree_le) VALUES (?, ?, 'admin', 1, ?)
+    ON CONFLICT (email) DO UPDATE SET role = 'admin', actif = 1, nom = CASE WHEN excluded.nom <> '' THEN excluded.nom ELSE nom END
+  `).run(email, nom, Date.now());
 }

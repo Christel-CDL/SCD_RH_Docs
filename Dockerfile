@@ -4,6 +4,8 @@ WORKDIR /app
 COPY package.json ./
 COPY src/ ./src/
 COPY public/ ./public/
+# Liste des pièces et textes des e-mails : modifiables sans toucher au code.
+COPY config/ ./config/
 # Base de données (et, à l'étape 3, pièces chiffrées) : volume Docker monté sur /data.
 RUN mkdir -p /data && chown node:node /data
 ENV NODE_ENV=production PORT=3000 DATA_DIR=/data TRUST_PROXY=1

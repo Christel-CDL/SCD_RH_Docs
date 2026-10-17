@@ -8,7 +8,7 @@ import { journaliser } from './db.js';
 
 export const EMAIL = /^[a-z0-9._%+'-]{1,64}@[a-z0-9.-]{1,190}\.[a-z]{2,24}$/;
 
-export function creerAuth({ db, config }) {
+export function creerAuth({ db, config, reglages }) {
   const requetes = {
     utilisateurParEmail: db.prepare('SELECT id, email, nom, role, actif FROM utilisateurs WHERE email = ?'),
     utilisateurParId: db.prepare('SELECT id, email, nom, role, actif FROM utilisateurs WHERE id = ?'),
@@ -34,6 +34,8 @@ export function creerAuth({ db, config }) {
   function preparerLien(email) {
     const utilisateur = requetes.utilisateurParEmail.get(email);
     if (!utilisateur || !utilisateur.actif) return null;
+    // Une assistante dont le domaine a été retiré de la liste ne peut plus se connecter (l'admin, toujours).
+    if (utilisateur.role !== 'admin' && !reglages.domaineAutorise(utilisateur.email)) return null;
     const jeton = nouveauJeton();
     requetes.creerJeton.run(empreinte(jeton), utilisateur.id, Date.now() + config.dureeLienConnexionMs);
     journaliser(db, 'lien_connexion_demande', { utilisateurId: utilisateur.id });

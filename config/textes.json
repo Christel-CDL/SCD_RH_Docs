@@ -1,0 +1,19 @@
+{
+  "_aide": "Textes des e-mails, modifiables sans toucher au code (redémarrer l'application après modification). Les mots entre {{ }} sont remplacés automatiquement. Ne jamais demander de mot de passe ni de coordonnées bancaires dans le corps d'un message.",
+  "nom_expediteur": "E&D Pessac – Pièces d'embauche",
+  "lien_connexion": {
+    "sujet": "Votre lien de connexion – {{agence}}",
+    "texte": "Bonjour,\n\nVoici votre lien pour vous connecter à l'outil de collecte de pièces de {{agence}} :\n{{lien}}\n\nIl est valable {{minutes}} minutes et ne sert qu'une seule fois.\nSi vous n'êtes pas à l'origine de cette demande, ignorez ce message : aucun accès n'est ouvert sans ce lien.\n\n{{agence}}"
+  },
+  "invitation": {
+    "embauche": {
+      "sujet": "{{agence}} – documents pour préparer votre embauche",
+      "intro": "Pour préparer votre embauche, {{assistante}}, de l'agence {{agence}}, vous demande les documents suivants :"
+    },
+    "mise_a_jour": {
+      "sujet": "{{agence}} – documents pour mettre à jour votre dossier",
+      "intro": "Pour mettre à jour votre dossier, {{assistante}}, de l'agence {{agence}}, vous demande les documents suivants :"
+    },
+    "texte": "Bonjour {{civilite}} {{nom}},\n\n{{intro}}\n\n{{pieces}}\n\nDéposez-les avant le {{date_limite}} grâce à ce lien personnel, depuis votre téléphone :\n{{lien}}\n\nVous pouvez prendre les documents en photo, vous arrêter et revenir plus tard avec le même lien.\nNe transmettez jamais vos documents ni vos coordonnées bancaires par e-mail : utilisez uniquement ce lien. Nous ne vous demanderons jamais de mot de passe.\n\nUne question ? Répondez simplement à ce message : il arrivera à {{assistante}}.\n\n{{agence}}"
+  }
+}

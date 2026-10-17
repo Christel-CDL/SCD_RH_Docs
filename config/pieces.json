@@ -1,0 +1,25 @@
+{
+  "_aide": "Liste des pièces, modifiable sans toucher au code (redémarrer l'application après modification). pages : « recto_verso », « une » ou « plusieurs ». controle_seulement : jointe à l'e-mail final avec la mention « à consulter puis supprimer, ne pas archiver ». choix : le salarié fournit l'une des pièces listées, et le fichier porte l'abréviation de celle fournie.",
+  "pieces": [
+    { "abrev": "CV",     "libelle": "Curriculum vitae",                                         "pages": "plusieurs",   "controle_seulement": false, "consigne": "Votre CV, toutes les pages." },
+    { "abrev": "CNI",    "libelle": "Carte nationale d'identité",                               "pages": "recto_verso", "controle_seulement": false, "consigne": "Photographiez le recto, puis le verso. Carte en cours de validité." },
+    { "abrev": "PASS",   "libelle": "Passeport (page photo)",                                   "pages": "une",         "controle_seulement": false, "consigne": "La page avec votre photo, en entier." },
+    { "abrev": "CNI_PASS", "libelle": "Carte d'identité ou passeport",                          "choix": ["CNI", "PASS"], "consigne": "Choisissez la pièce que vous fournissez." },
+    { "abrev": "TS",     "libelle": "Titre de séjour / autorisation de travail",                "pages": "recto_verso", "controle_seulement": false, "consigne": "Photographiez le recto, puis le verso. Titre en cours de validité." },
+    { "abrev": "JDOM",   "libelle": "Justificatif de domicile de moins de 3 mois",              "pages": "plusieurs",   "controle_seulement": false, "consigne": "Facture d'énergie, de téléphone, avis d'imposition… daté de moins de 3 mois." },
+    { "abrev": "CPAM",   "libelle": "Attestation de droits Assurance maladie",                  "pages": "plusieurs",   "controle_seulement": false, "consigne": "À télécharger sur votre compte ameli.fr." },
+    { "abrev": "B3",     "libelle": "Extrait de casier judiciaire (bulletin n°3)",              "pages": "plusieurs",   "controle_seulement": true,  "consigne": "À demander gratuitement sur casier-judiciaire.justice.gouv.fr." },
+    { "abrev": "DIPL",   "libelle": "Diplômes",                                                 "pages": "plusieurs",   "controle_seulement": false, "consigne": "Un diplôme par page." },
+    { "abrev": "CTRAV",  "libelle": "Certificats de travail",                                   "pages": "plusieurs",   "controle_seulement": false, "consigne": "Les certificats de vos derniers employeurs." },
+    { "abrev": "PERMIS", "libelle": "Permis de conduire",                                       "pages": "recto_verso", "controle_seulement": true,  "consigne": "Photographiez le recto, puis le verso." },
+    { "abrev": "CG",     "libelle": "Carte grise",                                              "pages": "plusieurs",   "controle_seulement": false, "consigne": "Le certificat d'immatriculation du véhicule utilisé." },
+    { "abrev": "ASSUR",  "libelle": "Attestation d'assurance véhicule avec usage professionnel", "pages": "plusieurs",  "controle_seulement": false, "consigne": "L'attestation doit mentionner l'usage professionnel (trajets pour le travail)." },
+    { "abrev": "RIB",    "libelle": "Relevé d'identité bancaire",                               "pages": "une",         "controle_seulement": false, "consigne": "Un RIB à votre nom." },
+    { "abrev": "PHOTO",  "libelle": "Photo d'identité (avec votre accord)",                     "pages": "une",         "controle_seulement": false, "consigne": "Une photo de face, sur fond clair. Elle n'est demandée qu'avec votre accord." },
+    { "abrev": "MUT",    "libelle": "Justificatif de dispense de mutuelle",                     "pages": "plusieurs",   "controle_seulement": false, "consigne": "L'attestation de votre mutuelle actuelle (ou celle de votre conjoint)." }
+  ],
+  "modeles": {
+    "embauche": ["CV", "CNI", "JDOM", "CPAM", "B3", "RIB"],
+    "mise_a_jour": []
+  }
+}

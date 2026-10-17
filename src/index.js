@@ -12,7 +12,7 @@ if (problemes.length) {
 }
 
 const db = ouvrirBase(config.dataDir);
-assurerAdmin(db, config.adminEmail);
+assurerAdmin(db, config.adminEmail, config.adminNom);
 const { serveur } = creerApp({ db, config, notificateur: creerNotificateur(config) });
 
 serveur.listen(config.port, () => console.log(`Collecte de pièces – serveur à l'écoute sur le port ${config.port} (${config.appUrl})`));

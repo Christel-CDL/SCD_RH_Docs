@@ -1,59 +1,13 @@
-// Tests d'intégration du parcours de connexion : vrai serveur HTTP, base SQLite temporaire, comptes fictifs.
-// Le notificateur est remplacé par une boîte aux lettres en mémoire : aucun e-mail ne part.
+// Tests d'intégration du parcours de connexion (voir tests/aide.js : base temporaire, comptes fictifs, aucun e-mail).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { lireConfig } from '../src/config.js';
-import { ouvrirBase, assurerAdmin } from '../src/db.js';
-import { creerApp } from '../src/app.js';
+import { ouvrirBase } from '../src/db.js';
 import { cookieSession } from '../src/http.js';
-
-async function demarrer() {
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scd-test-'));
-  const { config } = lireConfig({ DATA_DIR: dataDir, ADMIN_EMAIL: 'admin@exemple.test', DEV_LOG_LINKS: '1' });
-  const db = ouvrirBase(dataDir);
-  assurerAdmin(db, config.adminEmail);
-  db.prepare("INSERT INTO utilisateurs (email, nom, role, actif, cree_le) VALUES ('assistante@exemple.test', 'Assistante Fictive', 'assistante', 1, 0)").run();
-  db.prepare("INSERT INTO utilisateurs (email, nom, role, actif, cree_le) VALUES ('ancienne@exemple.test', 'Compte Désactivé', 'assistante', 0, 0)").run();
-  const boite = [];
-  const notificateur = { envoyer: async (evenement, donnees) => { boite.push({ evenement, donnees }); } };
-  const { serveur } = creerApp({ db, config, notificateur });
-  await new Promise((ok) => serveur.listen(0, '127.0.0.1', ok));
-  config.appUrl = `http://127.0.0.1:${serveur.address().port}`;
-  const base = config.appUrl;
-
-  const envoyer = (chemin, { methode = 'GET', formulaire, cookie, origine = base } = {}) => fetch(base + chemin, {
-    method: methode,
-    redirect: 'manual',
-    headers: {
-      ...(formulaire ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}),
-      ...(methode === 'POST' && origine ? { Origin: origine } : {}),
-      ...(cookie ? { Cookie: cookie } : {}),
-    },
-    body: formulaire ? new URLSearchParams(formulaire).toString() : undefined,
-  });
-
-  async function fermer() {
-    await new Promise((ok) => serveur.close(ok));
-    db.close();
-    fs.rmSync(dataDir, { recursive: true, force: true });
-  }
-  return { db, boite, envoyer, fermer, base };
-}
-
-const attendre = () => new Promise((ok) => setImmediate(ok));
-const jetonDuLien = (lien) => new URL(lien).searchParams.get('jeton');
-const cookieDe = (reponse) => reponse.headers.get('set-cookie').split(';')[0];
-
-async function seConnecter(app, email = 'assistante@exemple.test') {
-  await app.envoyer('/connexion', { methode: 'POST', formulaire: { email } });
-  await attendre();
-  const jeton = jetonDuLien(app.boite.at(-1).donnees.lien);
-  const reponse = await app.envoyer('/connexion/lien', { methode: 'POST', formulaire: { jeton } });
-  return { reponse, jeton, cookie: cookieDe(reponse) };
-}
+import { demarrer, attendre, lienDans, jetonDuLien, cookieDe, seConnecter } from './aide.js';
 
 test('sans session, la page d\'accueil renvoie vers la connexion', async () => {
   const app = await demarrer();
@@ -77,7 +31,7 @@ test('la réponse est identique pour une adresse autorisée, inconnue ou désact
     assert.equal(textes[0], textes[2]);
     await attendre();
     assert.equal(app.boite.length, 1, 'seule l\'adresse autorisée et active reçoit un lien');
-    assert.equal(app.boite[0].evenement, 'lien_connexion');
+    assert.equal(app.boite[0].donnees.categorie, 'lien_connexion');
     assert.equal(app.boite[0].donnees.destinataire, 'assistante@exemple.test');
   } finally { await app.fermer(); }
 });
@@ -87,7 +41,7 @@ test('le lien n\'est stocké que sous forme d\'empreinte', async () => {
   try {
     await app.envoyer('/connexion', { methode: 'POST', formulaire: { email: 'assistante@exemple.test' } });
     await attendre();
-    const jeton = jetonDuLien(app.boite[0].donnees.lien);
+    const jeton = jetonDuLien(lienDans(app.boite[0].donnees.texte));
     const lignes = app.db.prepare('SELECT empreinte FROM jetons_connexion').all();
     assert.equal(lignes.length, 1);
     assert.notEqual(lignes[0].empreinte, jeton);
@@ -100,7 +54,7 @@ test('ouvrir le lien ne le consomme pas ; le bouton ouvre une session de 8 h', a
   try {
     await app.envoyer('/connexion', { methode: 'POST', formulaire: { email: 'assistante@exemple.test' } });
     await attendre();
-    const lien = new URL(app.boite[0].donnees.lien);
+    const lien = new URL(lienDans(app.boite[0].donnees.texte));
     // Un antivirus de messagerie qui « visite » le lien deux fois ne doit rien casser.
     for (let i = 0; i < 2; i++) assert.equal((await app.envoyer(lien.pathname + lien.search)).status, 200);
 
@@ -133,7 +87,7 @@ test('un lien expiré est refusé', async () => {
     await app.envoyer('/connexion', { methode: 'POST', formulaire: { email: 'assistante@exemple.test' } });
     await attendre();
     app.db.prepare('UPDATE jetons_connexion SET expire_le = ?').run(Date.now() - 1);
-    const jeton = jetonDuLien(app.boite[0].donnees.lien);
+    const jeton = jetonDuLien(lienDans(app.boite[0].donnees.texte));
     assert.equal((await app.envoyer('/connexion/lien', { methode: 'POST', formulaire: { jeton } })).status, 410);
   } finally { await app.fermer(); }
 });
@@ -178,6 +132,18 @@ test('une requête venant d\'un autre site est refusée', async () => {
   } finally { await app.fermer(); }
 });
 
+test('le contrôle d\'origine accepte « Origin: null » seulement si le navigateur indique la même origine', async () => {
+  const { origineAutorisee } = await import('../src/http.js');
+  const config = { appUrl: 'https://pieces.expertform.fr' };
+  const req = (headers) => ({ headers });
+  assert.equal(origineAutorisee(req({ origin: 'https://pieces.expertform.fr' }), config), true);
+  assert.equal(origineAutorisee(req({ origin: 'https://pirate.example' }), config), false);
+  assert.equal(origineAutorisee(req({ origin: 'null', 'sec-fetch-site': 'same-origin' }), config), true);
+  assert.equal(origineAutorisee(req({ origin: 'null', 'sec-fetch-site': 'cross-site' }), config), false);
+  assert.equal(origineAutorisee(req({ origin: 'null' }), config), false);
+  assert.equal(origineAutorisee(req({ 'sec-fetch-site': 'cross-site' }), config), false);
+});
+
 test('les demandes de lien répétées sont limitées', async () => {
   const app = await demarrer();
   try {
@@ -194,7 +160,7 @@ test('les en-têtes de sécurité sont présents', async () => {
     assert.match(r.headers.get('content-security-policy'), /default-src 'none'/);
     assert.match(r.headers.get('content-security-policy'), /frame-ancestors 'none'/);
     assert.equal(r.headers.get('x-content-type-options'), 'nosniff');
-    assert.equal(r.headers.get('referrer-policy'), 'no-referrer');
+    assert.equal(r.headers.get('referrer-policy'), 'same-origin');
     assert.equal(r.headers.get('cache-control'), 'no-store');
   } finally { await app.fermer(); }
 });

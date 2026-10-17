@@ -14,12 +14,16 @@ export function lireConfig(env = process.env) {
     appUrl,
     https: appUrl.startsWith('https:'),
     dataDir: path.resolve(env.DATA_DIR || './data'),
+    configDir: path.resolve(env.CONFIG_DIR || './config'),
     adminEmail: String(env.ADMIN_EMAIL || '').trim().toLowerCase(),
+    adminNom: String(env.ADMIN_NOM || '').trim().slice(0, 80),
     agence: env.AGENCE_NOM || 'Essentiel & Domicile Pessac',
     // Derrière Traefik, la dernière adresse de X-Forwarded-For est celle qu'il ajoute.
     trustProxy: env.TRUST_PROXY === '1',
     dureeSessionMs: (Number(env.SESSION_HOURS) || 8) * 3600e3,
     dureeLienConnexionMs: (Number(env.LOGIN_LINK_MINUTES) || 15) * 60e3,
+    // Lien du salarié : 15 jours au plus. C'est aussi le délai de purge absolue (décision du 17/10/2026).
+    dureeLienSalarieJours: Math.min(15, Math.max(2, Math.round(Number(env.EMPLOYEE_LINK_DAYS) || 15))),
     n8n: {
       webhookUrl: String(env.N8N_WEBHOOK_URL || ''),
       secret: String(env.N8N_WEBHOOK_SECRET || ''),
