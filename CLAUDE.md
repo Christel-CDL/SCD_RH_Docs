@@ -4,6 +4,7 @@ Application de collecte de pièces justificatives de salariés pour E&D Pessac (
 
 - **Feuille de route** : `C:\Users\Christel\OneDrive - CDL EXPERTISES\DEV-CONSULT\SCD\SCD Services\PROMPT_collecte-pieces.md`, à appliquer à la lettre (RGPD et sécurité non négociables). Travail par étapes (§ 8) : ne jamais commencer l'étape suivante sans la validation de Christel. Avancement dans `README.md`.
 - **Décisions de l'étape 0 (17/10/2026)** : domaine `pieces.expertform.fr` (DNS OVH saisis par Christel) ; **n8n dédié** à l'application ; compte Brevo vérifié sur `expertform.fr`, **partagé** avec Constats et PENA (le compteur de 300/jour doit en tenir compte) ; **purge absolue à 15 jours** après la création de la demande, qui l'emporte sur « ne rien supprimer tant que l'envoi n'a pas réussi » ; date limite affichée au salarié : J+14 à 18 h.
+- **Décisions de l'étape 4 (17/10/2026)** : **pas de recadrage automatique** (écart voulu au cahier des charges § 2.4 et § 6 : cadre-guide à l'écran, contrôles de résolution, netteté, luminosité et reflets conservés) ; **PDF reçus « désarmés »** : chaque page est rendue en image dans le téléphone (pdf.js, servi par l'application) puis l'application refait le PDF, sans métadonnées ni contenu actif.
 - **Constats** (`github.com/Christel-CDL/APP_CONSTATS`) sert uniquement d'inspiration : ne jamais le modifier ni le copier.
 
 ## Commandes
