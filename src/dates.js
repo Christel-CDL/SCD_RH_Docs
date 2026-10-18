@@ -40,5 +40,8 @@ const formatCourt = new Intl.DateTimeFormat('fr-FR', { timeZone: FUSEAU, day: '2
 const formatHeure = new Intl.DateTimeFormat('fr-FR', { timeZone: FUSEAU, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 export const dateLongue = (instant) => formatLong.format(new Date(instant)).replace(':', ' h ');
+// Jour seul, sans l'heure (« dimanche 1 novembre 2026 ») : en-tête de la page de dépôt (demande de Christel, 18/10/2026).
+const formatJour = new Intl.DateTimeFormat('fr-FR', { timeZone: FUSEAU, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+export const dateJour = (instant) => formatJour.format(new Date(instant));
 export const dateCourte = (instant) => formatCourt.format(new Date(instant));
 export const dateHeure = (instant) => formatHeure.format(new Date(instant));

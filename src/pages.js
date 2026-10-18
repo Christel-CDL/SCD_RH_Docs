@@ -1,7 +1,7 @@
 // Pages HTML rendues côté serveur. Tout texte variable passe par echapper().
 // Vocabulaire simple, gros boutons, une seule action principale par écran. Tout marche par formulaires ;
 // seule la page de dépôt ajoute un script (public/depot.js), qui améliore les photos sans être indispensable.
-import { dateCourte, dateHeure, dateLongue } from './dates.js';
+import { dateCourte, dateHeure, dateLongue, dateJour } from './dates.js';
 import { TYPES, STATUTS } from './demandes.js';
 import { ACTIONS } from './utilisateurs.js';
 
@@ -265,7 +265,7 @@ export function pageDepot({ agence, demande, jeton, etat, textes, controles, err
       ${rgpd}
     </details>
     ${etat.ouverte
-    ? `<p>L'agence ${echapper(agence)} vous demande les documents ci-dessous. Déposez-les avant le <strong>${echapper(dateLongue(demande.date_limite))}</strong>.</p>`
+    ? `<p>L'agence ${echapper(agence)} vous demande les documents ci-dessous. Déposez-les avant le <strong>${echapper(dateJour(demande.date_limite))}</strong>.</p>`
     : message('Le délai de dépôt est dépassé : vous ne pouvez plus déposer de pièce. Contactez l\'agence.', true)}
     <p class="progression" aria-live="polite">Pièces déposées : <strong>${deposees} sur ${etat.pieces.length}</strong></p>
     <details class="aide">

@@ -155,6 +155,8 @@ test('la page de dépôt affiche les pièces demandées, la mention RGPD et l\'a
     assert.match(page, /Responsable du traitement/);
     assert.match(page, /Besoin d'aide/);
     assert.match(page, /Pièces déposées : <strong>0 sur 3/);
+    // Demande de Christel du 18/10/2026 : la date limite de l'en-tête s'affiche sans l'heure.
+    assert.match(page, /Déposez-les avant le <strong>\p{L}+ \d{1,2} \p{L}+ \d{4}<\/strong>\./u);
     assert.match(page, /disabled aria-disabled="true">Envoyer mon dossier/);
     assert.match(page, /<script src="\/depot.js" defer>/);
   } finally { await app.fermer(); }
