@@ -17,6 +17,7 @@ function gabarit({ titre, contenu, session = null, agence, large = false, script
   const barre = session
     ? `<nav class="navigation" aria-label="Menu">
          <a href="/">Mes demandes</a>
+         <a href="/aide">Aide</a>
          ${session.role === 'admin' ? '<a href="/admin/utilisateurs">Administration</a>' : ''}
          <form method="post" action="/deconnexion">
            ${csrf(session)}
@@ -457,5 +458,68 @@ export function pageMessage({ agence, titre, message: texte, session = null }) {
     <h1>${echapper(titre)}</h1>
     ${message(texte, true)}
     <p><a href="/">Revenir à l'accueil</a></p>`,
+  });
+}
+
+// ── Guide d'une page pour les personnes qui font les demandes (livrable 6) ──
+// Imprimable tel quel (styles.css, @media print) ; le même texte sert à fabriquer le PDF remis à l'agence.
+export function pageGuide({ agence, session = null, appUrl, contact, minutesLien, joursRelance }) {
+  return gabarit({
+    agence,
+    session,
+    titre: 'Aide',
+    large: true,
+    contenu: `
+    <h1>Demander des pièces à un salarié : mode d'emploi</h1>
+    <p class="guide-adresse">Adresse de l'outil : <strong>${echapper(appUrl)}</strong></p>
+    <div class="guide">
+      <section>
+        <h2>1. Se connecter</h2>
+        <p>Saisissez votre adresse e-mail professionnelle, puis touchez « Recevoir mon lien de connexion ». Ouvrez l'e-mail reçu
+          (regardez dans les courriers indésirables les premières fois) et touchez « Me connecter ». Le lien sert une seule fois
+          et dure ${minutesLien} minutes. Aucun mot de passe.</p>
+      </section>
+      <section>
+        <h2>2. Faire une demande</h2>
+        <p>« Nouvelle embauche » : les pièces habituelles sont déjà cochées, ajustez si besoin. « Mettre à jour le dossier
+          d'un salarié » : cochez seulement les pièces à renouveler. Saisissez la civilité, le nom de famille et l'adresse
+          e-mail du salarié (vérifiez-la bien), puis « Envoyer l'invitation au salarié ».</p>
+      </section>
+      <section>
+        <h2>3. Ce que fait le salarié</h2>
+        <p>Il reçoit un e-mail avec un bouton « Déposer mes documents ». Depuis son téléphone, il photographie chaque pièce ;
+          l'outil vérifie que la photo est lisible. Il a 14 jours.${joursRelance > 0 ? ` S'il n'a pas fini, il reçoit une relance automatique au bout
+          de ${joursRelance} jours.` : ''} S'il répond à l'e-mail, sa réponse vous arrive directement.</p>
+      </section>
+      <section>
+        <h2>4. Suivre vos demandes</h2>
+        <ul>
+          <li><strong>Invitation envoyée</strong> : le salarié n'a encore rien déposé.</li>
+          <li><strong>En cours</strong> : le nombre de pièces déposées est indiqué.</li>
+          <li><strong>Complète : pièces à télécharger</strong> : le dossier est arrivé.</li>
+          <li><strong>Pièces récupérées</strong> : vous les avez enregistrées, elles sont supprimées de l'outil.</li>
+        </ul>
+      </section>
+      <section>
+        <h2>5. Récupérer les pièces</h2>
+        <p>Vous recevez un e-mail « Pièces reçues », <strong>sans pièce jointe</strong>. Touchez « Télécharger les pièces »,
+          connectez-vous, téléchargez les PDF (un par un ou en un seul fichier ZIP) et rangez-les dans le dossier du salarié.
+          Touchez ensuite « J'ai enregistré les pièces : les supprimer de l'outil ». Sans ce geste, elles sont supprimées
+          24 heures après le premier téléchargement.</p>
+        <p>« À VÉRIFIER » : photo peu lisible envoyée quand même, à contrôler. « CONTRÔLE SEULEMENT » (casier judiciaire) :
+          à consulter puis supprimer, ne pas archiver.</p>
+      </section>
+      <section>
+        <h2>6. Bon à savoir</h2>
+        <ul>
+          <li>Tout est effacé <strong>15 jours</strong> après la demande. Si le salarié n'a pas fini, vous recevez un e-mail
+            « lien expiré » : refaites une demande et demandez-lui de surveiller sa messagerie.</li>
+          <li>Ne transférez pas les e-mails de l'outil : les liens sont personnels.</li>
+          <li>Une question, un problème : ${echapper(contact.nom || 'l\'administratrice')}${contact.email ? `, <a href="mailto:${echapper(contact.email)}">${echapper(contact.email)}</a>` : ''}.</li>
+        </ul>
+      </section>
+    </div>
+    <p class="guide-astuce">Astuce : sur téléphone, ajoutez l'outil à l'écran d'accueil (Safari : bouton Partager, puis « Sur l'écran
+      d'accueil » ; Chrome : menu ⋮, puis « Ajouter à l'écran d'accueil »).</p>`,
   });
 }

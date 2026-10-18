@@ -197,6 +197,13 @@ export function creerApp({ db, config, notificateur: notificateurBrut, catalogue
       },
     },
     {
+      m: 'GET', c: '/aide', acces: 'session',
+      f: (req, res, { session }) => html(res, 200, pages.pageGuide({
+        agence, session, appUrl: config.appUrl, contact: { nom: config.adminNom, email: config.adminEmail },
+        minutesLien: Math.round(config.dureeLienConnexionMs / 60e3), joursRelance: reglagesEnvoi.relanceJours,
+      })),
+    },
+    {
       m: 'GET', c: '/demandes/nouvelle', acces: 'session',
       f: (req, res, { url, session }) => {
         const type = url.searchParams.get('type');

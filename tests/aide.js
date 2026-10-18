@@ -11,10 +11,11 @@ export const ASSISTANTE = 'assistante@exemple.test';
 export const ADMIN = 'admin@exemple.test';
 export const CLE_TEST = 'ab'.repeat(32); // clé fictive, réservée aux tests
 
-export async function demarrer({ envoiEnEchec = false } = {}) {
+export async function demarrer({ envoiEnEchec = false, env = {} } = {}) {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scd-test-'));
   const { config } = lireConfig({
     DATA_DIR: dataDir, ADMIN_EMAIL: ADMIN, DEV_LOG_LINKS: '1', FILE_ENCRYPTION_KEY: CLE_TEST,
+    ...env, // par exemple pour le PDF du guide (tests/e2e/guide-pdf.mjs)
   });
   const db = ouvrirBase(dataDir);
   assurerAdmin(db, config.adminEmail);

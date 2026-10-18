@@ -207,3 +207,20 @@ test('le jeton du salarié n\'apparaît pas dans le journal d\'accès', async ()
     assert.ok(!lignes.some((l) => l.includes(jeton)));
   } finally { console.log = log; await app.fermer(); }
 });
+
+test('page d\'aide : réservée aux personnes connectées, reprend les vrais libellés et le contact', async () => {
+  const app = await demarrer();
+  try {
+    assert.equal((await app.envoyer('/aide')).status, 303, 'connexion obligatoire');
+    const { cookie } = await seConnecter(app);
+    const accueil = await (await app.envoyer('/', { cookie })).text();
+    assert.match(accueil, /<a href="\/aide">Aide<\/a>/);
+    const page = await (await app.envoyer('/aide', { cookie })).text();
+    for (const libelle of ['Recevoir mon lien de connexion', 'Nouvelle embauche', 'Envoyer l\'invitation au salarié',
+      'Déposer mes documents', 'Télécharger les pièces', 'J\'ai enregistré les pièces : les supprimer de l\'outil', '15 jours']) {
+      assert.ok(page.includes(libelle.replace(/'/g, '&#39;')) || page.includes(libelle), libelle);
+    }
+    assert.match(page, /relance automatique au bout\s+de 7 jours/);
+    assert.match(page, /mailto:/);
+  } finally { await app.fermer(); }
+});
