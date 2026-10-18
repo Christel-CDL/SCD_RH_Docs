@@ -34,7 +34,7 @@ export function creerEnvoi({ db, config, emails, depot, notificateur, reglagesEn
     demandeur: db.prepare('SELECT email, nom FROM utilisateurs WHERE id = ?'),
     supprimerPieces: db.prepare('DELETE FROM pieces WHERE demande_id = ?'),
     transmise: db.prepare(`
-      UPDATE demandes SET statut = 'transmise', transmise_le = ?, jeton_empreinte = NULL, email_salarie = ''
+      UPDATE demandes SET statut = 'transmise', transmise_le = ?, jeton_empreinte = NULL, jeton_chiffre = NULL, email_salarie = ''
       WHERE id = ? AND statut = 'complete'`),
   };
   const enCours = new Set(); // envois en train d'être confiés à n8n : jamais deux fois en même temps

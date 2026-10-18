@@ -1,5 +1,7 @@
 {
   "_aide": "Réglages de l'e-mail annonçant un dossier complet (envoyé par n8n) et du compteur d'e-mails. Modifiables sans toucher au code (redémarrer l'application ensuite).",
+  "relance_salarie_jours": 7,
+  "_relance_salarie_jours": "Relance automatique du salarié qui n'a pas encore envoyé son dossier, ce nombre de jours après la demande (une seule relance, avec le même lien). 0 pour ne pas relancer.",
   "quota_journalier": 150,
   "_quota_journalier": "Nombre d'e-mails par jour réservé à cette application sur le compte Brevo partagé (300 par jour en tout, avec Constats et PENA).",
   "alerte_quota_pourcent": 80,

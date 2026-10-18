@@ -21,6 +21,13 @@
     "bouton": "Déposer mes documents",
     "texte": "Bonjour {{civilite}} {{nom}},\n\n{{intro}}\n\n{{pieces}}\n\nDéposez-les avant le {{date_limite}} grâce à ce lien personnel, depuis votre téléphone :\n{{lien}}\n\nVous pouvez prendre les documents en photo, vous arrêter et revenir plus tard avec le même lien.\nNe transmettez jamais vos documents ni vos coordonnées bancaires par e-mail : utilisez uniquement ce lien. Nous ne vous demanderons jamais de mot de passe.\n\nUne question ? Répondez simplement à ce message : il arrivera à {{demandeur}}.\n\n{{agence}}"
   },
+  "_relance": "Relance automatique du salarié qui n'a pas encore envoyé son dossier, au bout du délai réglé dans config/envoi.json (7 jours), avec LE MÊME lien (demande de M. Domingo du 18/10/2026). Le bouton reprend celui de l'invitation. {{pieces}} liste les pièces encore manquantes.",
+  "relance": {
+    "sujet": "Rappel – {{agence}} – documents à déposer avant le {{date_limite}}",
+    "texte": "Bonjour {{civilite}} {{nom}},\n\nPetit rappel : le {{date_demande}}, {{demandeur}}, de l'agence {{agence}}, vous a demandé des documents.\n\n{{reste}}\n\nDéposez-les avant le {{date_limite}} avec votre lien personnel, toujours valable, depuis votre téléphone :\n{{lien}}\n\nLes documents déjà déposés sont bien enregistrés : vous n'avez pas à les refaire.\nNe transmettez jamais vos documents ni vos coordonnées bancaires par e-mail : utilisez uniquement ce lien. Nous ne vous demanderons jamais de mot de passe.\n\nUne question ? Répondez simplement à ce message : il arrivera à {{demandeur}}.\n\n{{agence}}",
+    "manquantes": "Il manque encore :\n\n{{pieces}}",
+    "toutes_deposees": "Toutes vos pièces sont déposées : il ne reste plus qu'à ouvrir le lien et à cliquer sur « Envoyer mon dossier »."
+  },
   "_rgpd": "Mention d'information (article 13 du RGPD), affichée en tête de la page de dépôt. Complétée le 18/10/2026 (SCD SERVICES, CDL EXPERTISES, hébergement Hostinger en France) et validée le même jour par le gérant de l'agence, Sébastien DOMINGO, responsable du traitement. Pas de DPO mentionné : la désignation n'est pas obligatoire pour l'agence, et la CNIL considère que le dirigeant ne peut pas être son propre DPO (conflit d'intérêts).",
   "mention_rgpd": [
     {

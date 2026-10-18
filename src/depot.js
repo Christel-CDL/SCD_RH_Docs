@@ -41,7 +41,7 @@ export function creerDepot({ db, catalogue, stockage, controles }) {
     marquerDeposee: db.prepare(`
       UPDATE pieces SET statut = 'deposee', abrev_fournie = ?, a_verifier = ?, depose_le = ? WHERE id = ?`),
     passerEnCours: db.prepare("UPDATE demandes SET statut = 'en_cours' WHERE id = ? AND statut = 'envoyee'"),
-    marquerComplete: db.prepare("UPDATE demandes SET statut = 'complete', complete_le = ? WHERE id = ? AND statut IN ('envoyee', 'en_cours')"),
+    marquerComplete: db.prepare("UPDATE demandes SET statut = 'complete', complete_le = ?, jeton_chiffre = NULL WHERE id = ? AND statut IN ('envoyee', 'en_cours')"),
     fichiersDemande: db.prepare('SELECT pg.fichier FROM pages pg JOIN pieces p ON p.id = pg.piece_id WHERE p.demande_id = ?'),
   };
 

@@ -124,6 +124,12 @@ const MIGRATIONS = [
   `
   ALTER TABLE envois ADD COLUMN telecharge_le INTEGER;
   `,
+  // 6 — relance du salarié à J+7 avec LE MÊME lien (demande de M. Domingo, 18/10/2026) : le jeton du lien est gardé
+  //     chiffré (AES-256-GCM, clé FILE_ENCRYPTION_KEY), effacé dès que le dossier est envoyé ou purgé.
+  `
+  ALTER TABLE demandes ADD COLUMN jeton_chiffre TEXT;
+  ALTER TABLE demandes ADD COLUMN relance_le INTEGER;
+  `,
 ];
 
 export function ouvrirBase(dataDir) {

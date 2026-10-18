@@ -23,16 +23,17 @@ export async function demarrer({ envoiEnEchec = false } = {}) {
   const boite = [];
   // n8n simulé : envoiEnEchec fait échouer tout sauf les liens de connexion ; n8n.enPanne, les seuls e-mails
   // « pièces prêtes » ; n8n.reponse : ce que n8n répond (par exemple { journal_efface: false }).
-  const n8n = { enPanne: false, reponse: { ok: true, journal_efface: true } };
+  const n8n = { enPanne: false, categoriesEnPanne: new Set(), reponse: { ok: true, journal_efface: true } };
   const notificateur = {
     envoyer: async (evenement, donnees) => {
       if (envoiEnEchec && donnees.categorie !== 'lien_connexion') throw new Error('n8n injoignable (simulé)');
       if (n8n.enPanne && donnees.categorie === 'envoi_final') throw new Error('n8n injoignable (simulé)');
+      if (n8n.categoriesEnPanne.has(donnees.categorie)) throw new Error('n8n injoignable (simulé)');
       boite.push({ evenement, donnees });
       return n8n.reponse;
     },
   };
-  const { serveur, stockage, envoi, purge } = creerApp({ db, config, notificateur });
+  const { serveur, stockage, envoi, purge, relances } = creerApp({ db, config, notificateur });
   await new Promise((ok) => serveur.listen(0, '127.0.0.1', ok));
   config.appUrl = `http://127.0.0.1:${serveur.address().port}`;
   const base = config.appUrl;
@@ -56,7 +57,7 @@ export async function demarrer({ envoiEnEchec = false } = {}) {
     db.close();
     fs.rmSync(dataDir, { recursive: true, force: true });
   }
-  return { db, boite, envoyer, fermer, base, config, stockage, dataDir, envoi, purge, n8n };
+  return { db, boite, envoyer, fermer, base, config, stockage, dataDir, envoi, purge, relances, n8n };
 }
 
 export const attendre = () => new Promise((ok) => setImmediate(ok));

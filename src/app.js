@@ -16,6 +16,7 @@ import { chargerCatalogue, chargerTextes, chargerControles, chargerReglagesEnvoi
 import { creerCompteur } from './compteur.js';
 import { creerEnvoi } from './envoi.js';
 import { creerPurge } from './purge.js';
+import { creerRelances } from './relances.js';
 import { creerEmails } from './emails.js';
 import { creerDemandes, validerDemande, TYPES } from './demandes.js';
 import { creerUtilisateurs } from './utilisateurs.js';
@@ -70,6 +71,7 @@ export function creerApp({ db, config, notificateur: notificateurBrut, catalogue
   const depot = creerDepot({ db, catalogue, stockage, controles });
   const envoi = creerEnvoi({ db, config, emails, depot, notificateur, reglagesEnvoi });
   const purge = creerPurge({ db, stockage, emails, notificateur });
+  const relances = creerRelances({ db, config, catalogue, emails, notificateur, reglagesEnvoi });
   purge.purger();
   const entetes = enTetesSecurite(config);
   const agence = config.agence;
@@ -80,7 +82,11 @@ export function creerApp({ db, config, notificateur: notificateurBrut, catalogue
   const minuterie = setInterval(() => {
     tours += 1;
     envoi.tic().catch((e) => console.error('Envois en attente :', e.message));
-    if (tours % 10 === 0) { auth.purger(); limiteur.nettoyer(); }
+    if (tours % 10 === 0) {
+      auth.purger();
+      limiteur.nettoyer();
+      relances.relancer().catch((e) => console.error('Relances :', e.message));
+    }
     if (tours % 60 === 0) {
       try { purge.purger(); } catch (e) { console.error('Purge de sécurité :', e.message); }
     }
@@ -433,5 +439,5 @@ export function creerApp({ db, config, notificateur: notificateurBrut, catalogue
     traiter(req, res);
   });
   serveur.on('close', () => clearInterval(minuterie));
-  return { serveur, auth, demandes, depot, stockage, envoi, purge, notificateur };
+  return { serveur, auth, demandes, depot, stockage, envoi, purge, relances, notificateur };
 }

@@ -1,7 +1,7 @@
 // Composition des e-mails. L'application écrit le message ; n8n se contente de l'envoyer (Brevo, puis Outlook).
 // Ainsi, changer de fournisseur ne touche jamais aux textes, et les textes restent dans config/textes.json.
 import { remplir } from './catalogue.js';
-import { dateLongue, dateCourte } from './dates.js';
+import { dateLongue, dateCourte, dateJour } from './dates.js';
 
 const echapper = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -48,7 +48,7 @@ export function creerEmails({ textes, catalogue, config }) {
       demandeur: assistante.nom || assistante.email,
       civilite: demande.civilite,
       nom: demande.nom,
-      date_limite: dateLongue(demande.date_limite),
+      date_limite: dateJour(demande.date_limite),
       lien,
     };
     valeurs.intro = remplir(modele.intro, valeurs);
@@ -60,6 +60,31 @@ export function creerEmails({ textes, catalogue, config }) {
       repondre_a: assistante.email,
       sujet: remplir(modele.sujet, valeurs),
       texte: remplir(textes.invitation.texte, valeurs),
+    }, { lien, bouton: textes.invitation.bouton });
+  }
+
+  // Relance du salarié (une seule, à J+7 par défaut) avec LE MÊME lien. manquantes : libellés des pièces encore à déposer.
+  function relance({ demande, manquantes, assistante, lien }) {
+    const t = textes.relance;
+    const valeurs = {
+      agence: config.agence,
+      demandeur: assistante.nom || assistante.email,
+      civilite: demande.civilite,
+      nom: demande.nom,
+      date_demande: dateCourte(demande.cree_le),
+      date_limite: dateJour(demande.date_limite),
+      lien,
+    };
+    valeurs.reste = manquantes.length
+      ? remplir(t.manquantes, { pieces: manquantes.map((l) => `  • ${l}`).join('\n') })
+      : t.toutes_deposees;
+    return avecHtml({
+      ...base,
+      categorie: 'relance_salarie',
+      destinataire: demande.email_salarie,
+      repondre_a: assistante.email,
+      sujet: remplir(t.sujet, valeurs),
+      texte: remplir(t.texte, valeurs),
     }, { lien, bouton: textes.invitation.bouton });
   }
 
@@ -122,5 +147,5 @@ export function creerEmails({ textes, catalogue, config }) {
     });
   }
 
-  return { lienConnexion, invitation, envoiFinal, expiration, alerte };
+  return { lienConnexion, invitation, relance, envoiFinal, expiration, alerte };
 }

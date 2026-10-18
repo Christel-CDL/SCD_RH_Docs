@@ -1,6 +1,7 @@
 // Demandes de pièces : création (avec ses pièces et le lien du salarié), lecture, liste pour le suivi.
 import crypto from 'node:crypto';
 import { nouveauJeton, empreinte, FORME_JETON } from './securite/jetons.js';
+import { chiffrer } from './securite/chiffrement.js';
 import { EMAIL } from './auth.js';
 import { dateLimite, expiration } from './dates.js';
 import { journaliser } from './db.js';
@@ -47,8 +48,8 @@ export function validerDemande(saisie, catalogue) {
 export function creerDemandes({ db, config }) {
   const requetes = {
     inserer: db.prepare(`
-      INSERT INTO demandes (id, utilisateur_id, type, civilite, nom, email_salarie, jeton_empreinte, cree_le, date_limite, expire_le)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
+      INSERT INTO demandes (id, utilisateur_id, type, civilite, nom, email_salarie, jeton_empreinte, jeton_chiffre, cree_le, date_limite, expire_le)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
     insererPiece: db.prepare('INSERT INTO pieces (id, demande_id, abrev) VALUES (?, ?, ?)'),
     supprimer: db.prepare('DELETE FROM demandes WHERE id = ?'),
     parId: db.prepare('SELECT * FROM demandes WHERE id = ?'),
@@ -71,7 +72,9 @@ export function creerDemandes({ db, config }) {
     const maintenant = Date.now();
     db.exec('BEGIN');
     try {
-      requetes.inserer.run(id, utilisateur.id, valeurs.type, valeurs.civilite, valeurs.nom, valeurs.email, empreinte(jeton), maintenant,
+      // Le lien est aussi gardé chiffré, pour la relance à J+7 avec le même lien (effacé dès l'envoi du dossier).
+      const jetonChiffre = config.cleFichiers ? chiffrer(config.cleFichiers, Buffer.from(jeton), `jeton:${id}`).toString('base64') : null;
+      requetes.inserer.run(id, utilisateur.id, valeurs.type, valeurs.civilite, valeurs.nom, valeurs.email, empreinte(jeton), jetonChiffre, maintenant,
         dateLimite(maintenant, config.dureeLienSalarieJours), expiration(maintenant, config.dureeLienSalarieJours));
       for (const abrev of valeurs.abrevs) requetes.insererPiece.run(identifiant(), id, abrev);
       db.exec('COMMIT');

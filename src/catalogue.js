@@ -56,6 +56,7 @@ export function chargerTextes(dossier) {
     ['invitation', 'mise_a_jour', 'sujet'], ['invitation', 'mise_a_jour', 'intro'], ['invitation', 'texte'],
     ...['bouton', 'sujet', 'texte', 'a_verifier', 'controle_seulement', 'mention_a_verifier', 'mention_controle_seulement'].map((m) => ['envoi_final', m]),
     ['expiration', 'sujet'], ['expiration', 'non_envoye'], ['expiration', 'non_telecharge'],
+    ['relance', 'sujet'], ['relance', 'texte'], ['relance', 'manquantes'], ['relance', 'toutes_deposees'],
     ['alerte', 'sujet'], ['alerte', 'texte'],
     ...['petite', 'floue', 'sombre', 'claire', 'reflet', 'forcer', 'bouton_forcer', 'pdf_lecture', 'pdf_pages', 'heic'].map((m) => ['lisibilite', m]),
   ];
@@ -108,6 +109,7 @@ export function chargerReglagesEnvoi(dossier) {
   }
   return {
     quotaJournalier: nombre('quota_journalier', 1, 300),
+    relanceJours: nombre('relance_salarie_jours', 0, 13),
     alerteQuotaPourcent: nombre('alerte_quota_pourcent', 10, 100),
     delaisMs: delais.map((d) => d * 60e3),
   };
