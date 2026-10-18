@@ -24,10 +24,11 @@ export function creerNotificateur(config) {
         'X-SCD-Signature': signer(config.n8n.secret, horodatage, corps),
       },
       body: corps,
-      signal: AbortSignal.timeout(10_000),
+      // n8n répond dès que Brevo a accepté l'e-mail (l'effacement du journal vient après) : 20 s laissent de la marge.
+      signal: AbortSignal.timeout(20_000),
     });
     if (!reponse.ok) throw new Error(`n8n a répondu ${reponse.status}`);
-    // Réponse de n8n, par exemple { ok: true, journal_efface: true } (effacement du journal Brevo de l'e-mail).
+    // Réponse de n8n, { ok: true } (un champ journal_efface: false serait noté dans le journal d'activité).
     return reponse.json().catch(() => ({}));
   }
   return { envoyer };

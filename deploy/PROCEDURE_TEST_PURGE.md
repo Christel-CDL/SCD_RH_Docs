@@ -19,7 +19,6 @@ Rappel du fonctionnement (depuis le 18/10/2026) : les pièces ne partent **jamai
 | Purge à 15 jours : tout est effacé, même si rien n'a été récupéré, et la personne qui a fait la demande est prévenue | « expiration sans dossier envoyé… », « expiration d'un dossier complet… » |
 | Fichiers orphelins de plus d'une heure effacés | « purge des fichiers orphelins… » |
 | Lien du salarié gardé chiffré pour la relance, effacé dès l'envoi du dossier | « pas de relance si le dossier est envoyé… » |
-| Échec d'effacement d'un journal Brevo noté dans le journal d'activité | « journal Brevo non effacé… » |
 
 ## Essai réel sur le VPS
 
@@ -54,7 +53,7 @@ Rappel du fonctionnement (depuis le 18/10/2026) : les pièces ne partent **jamai
 
 ### 5. Vérifier Brevo
 
-Brevo → **Transactionnel** → **Journaux** : les e-mails de l'essai (invitation, pièces reçues) doivent **disparaître** (effacement automatique, traité par Brevo sous 72 h au plus). Les rouvrir avant leur disparition ne doit jamais montrer de pièce jointe. Si un journal reste au-delà de 72 h, le journal d'activité de l'application indique « Journal Brevo d'un e-mail non effacé » : vérifier l'identifiant `Brevo API SCD` dans n8n.
+Brevo → **Transactionnel** → **Journaux** : les e-mails de l'essai (invitation, pièces reçues) doivent **disparaître** (effacement automatique, traité par Brevo sous 72 h au plus). Les rouvrir avant leur disparition ne doit jamais montrer de pièce jointe. Si un journal reste au-delà de 72 h : vérifier l'identifiant `Brevo API SCD` dans le nœud « Effacer le journal Brevo » du workflow « SCD – Événements de l'application ».
 
 ### 6. Purge à 15 jours et relance
 

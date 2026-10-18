@@ -94,15 +94,15 @@ Les deux workflows sont déjà installés. Pour les **mettre à jour** sans cass
 
 1. Ouvrez **« SCD – Envoyer un e-mail »** → cliquez dans le dessin → **Ctrl+A** puis **Suppr** → menu **…** → **Import from File…** → `deploy/n8n/SCD_envoyer_un_email.json`.
    - Nœud **« Brevo (SMTP) »** : identifiant `Brevo SMTP SCD`.
-   - Nœud **« Effacer le journal Brevo »** : identifiant `Brevo API SCD`.
    - **Save**, puis **Publish** (nom de version, par exemple `v3 – effacement des journaux`).
 2. Ouvrez **« SCD – Événements de l'application »** → même méthode → `deploy/n8n/SCD_evenements_application.json`.
    - Nœud **« Envoyer l'e-mail »** : choisissez « SCD – Envoyer un e-mail » dans la liste.
+   - Nœud **« Effacer le journal Brevo »** : identifiant `Brevo API SCD`.
    - **Save**, puis **Publish**.
 
 Les **deux** workflows doivent être publiés : un sous-workflow non publié ne s'exécute pas (constaté le 17/10/2026). Pour une première installation, utilisez simplement **Create workflow** → **Import from File** pour chacun.
 
-**Vérification :** les deux workflows sont marqués « Published ». Demandez un lien de connexion : il arrive, et quelques minutes plus tard son journal n'apparaît plus dans Brevo (ou au plus tard sous 72 h, selon Brevo). Si l'effacement échoue, le journal d'activité de l'application affiche « Journal Brevo d'un e-mail non effacé ».
+**Vérification :** les deux workflows sont marqués « Published ». Demandez un lien de connexion : il arrive, et quelques minutes plus tard son journal n'apparaît plus dans Brevo (ou au plus tard sous 72 h, selon Brevo). Si le journal reste au-delà de 72 h, vérifiez l'identifiant `Brevo API SCD` dans le nœud « Effacer le journal Brevo ».
 
 ## 8. Essai complet (vous, avec des documents fictifs)
 
@@ -121,7 +121,7 @@ Validé le 17/10/2026 sur un n8n 2.43.5 provisoire :
 D'après l'aide de Brevo (octobre 2026), les **journaux et aperçus des e-mails sont conservés sans limite de durée par défaut**. L'essai du 18/10/2026 l'a confirmé : la **pièce jointe** d'un e-mail se rouvrait depuis le journal. D'où les deux mesures prises :
 
 1. **plus aucune pièce par e-mail** (téléchargement dans l'application) ;
-2. **effacement automatique** du journal de chaque e-mail juste après l'envoi (étape 6 b). Brevo traite l'effacement sous 72 h au plus.
+2. **effacement automatique** du journal de chaque e-mail, 20 s après l'envoi (étape 6 b). n8n répond d'abord à l'application, puis efface : sinon l'application attendait trop longtemps (essai du 18/10/2026). Brevo traite l'effacement sous 72 h au plus.
 
 En filet de sécurité, réglez aussi la durée de conservation la plus courte : **Paramètres → E-mails transactionnels → Règles de conservation**. Ce réglage s'applique à tout le compte, donc aussi à Constats et PENA.
 

@@ -9,18 +9,29 @@
       "name": "Déclencheur",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1.1,
-      "position": [0, 0]
+      "position": [
+        0,
+        0
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 },
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
           "conditions": [
             {
               "id": "c0000000-0000-4000-8000-000000000001",
               "leftValue": "={{ $env.EMAIL_PROVIDER }}",
               "rightValue": "outlook",
-              "operator": { "type": "string", "operation": "equals" }
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
             }
           ],
           "combinator": "and"
@@ -31,7 +42,10 @@
       "name": "Outlook ? (sinon Brevo)",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [220, 0]
+      "position": [
+        220,
+        0
+      ]
     },
     {
       "parameters": {
@@ -50,36 +64,19 @@
       "name": "Brevo (SMTP)",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
-      "position": [460, 100],
+      "position": [
+        460,
+        100
+      ],
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 5000,
       "credentials": {
-        "smtp": { "id": "", "name": "Brevo SMTP SCD" }
+        "smtp": {
+          "id": "",
+          "name": "Brevo SMTP SCD"
+        }
       }
-    },
-    {
-      "parameters": {
-        "method": "DELETE",
-        "url": "=https://api.brevo.com/v3/smtp/log/{{ encodeURIComponent($json.messageId) }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "options": {}
-      },
-      "id": "5a0c3b0e-0006-4c55-9a51-0000000000a6",
-      "name": "Effacer le journal Brevo",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [700, 100],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000,
-      "onError": "continueErrorOutput",
-      "credentials": {
-        "httpHeaderAuth": { "id": "", "name": "Brevo API SCD" }
-      },
-      "notes": "Brevo garde dans ses journaux le contenu des e-mails (liens personnels compris). On efface le journal de chaque e-mail dès son envoi. Un échec n'empêche pas l'e-mail : l'application le note dans son journal d'activité.",
-      "notesInFlow": true
     },
     {
       "parameters": {
@@ -90,44 +87,66 @@
       "name": "Outlook (phase 2, pas encore installé)",
       "type": "n8n-nodes-base.stopAndError",
       "typeVersion": 1,
-      "position": [460, -100],
+      "position": [
+        460,
+        -100
+      ],
       "notes": "Phase 2 seulement. À la bascule : remplacer ce nœud par un nœud « Microsoft Outlook » (envoi de message) relié à la boîte de l'agence. Un nœud Outlook sans identifiant empêche n8n de publier le workflow : il ne peut donc pas être préparé à l'avance.",
       "notesInFlow": true
     },
     {
       "parameters": {
-        "jsCode": "// E-mail parti, journal Brevo effacé.\nreturn [{ json: { envoye: true, journal_efface: true } }];"
+        "jsCode": "// E-mail parti : on rend seulement l'identifiant Brevo de l'e-mail, pour effacer ensuite son journal.\nreturn [{ json: { envoye: true, messageId: $json.messageId || '' } }];"
       },
       "id": "5a0c3b0e-0005-4c55-9a51-0000000000a5",
       "name": "Résultat",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [940, 0]
-    },
-    {
-      "parameters": {
-        "jsCode": "// E-mail parti, mais le journal Brevo n'a pas pu être effacé (clé API absente ou refusée).\nreturn [{ json: { envoye: true, journal_efface: false } }];"
-      },
-      "id": "5a0c3b0e-0007-4c55-9a51-0000000000a7",
-      "name": "Résultat (journal non effacé)",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [940, 200]
+      "position": [
+        940,
+        0
+      ]
     }
   ],
   "connections": {
-    "Déclencheur": { "main": [[{ "node": "Outlook ? (sinon Brevo)", "type": "main", "index": 0 }]] },
-    "Outlook ? (sinon Brevo)": {
+    "Déclencheur": {
       "main": [
-        [{ "node": "Outlook (phase 2, pas encore installé)", "type": "main", "index": 0 }],
-        [{ "node": "Brevo (SMTP)", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Outlook ? (sinon Brevo)",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "Brevo (SMTP)": { "main": [[{ "node": "Effacer le journal Brevo", "type": "main", "index": 0 }]] },
-    "Effacer le journal Brevo": {
+    "Outlook ? (sinon Brevo)": {
       "main": [
-        [{ "node": "Résultat", "type": "main", "index": 0 }],
-        [{ "node": "Résultat (journal non effacé)", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Outlook (phase 2, pas encore installé)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Brevo (SMTP)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Brevo (SMTP)": {
+      "main": [
+        [
+          {
+            "node": "Résultat",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },

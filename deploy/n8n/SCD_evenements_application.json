@@ -6,13 +6,18 @@
         "httpMethod": "POST",
         "path": "scd-evenements",
         "responseMode": "responseNode",
-        "options": { "rawBody": true }
+        "options": {
+          "rawBody": true
+        }
       },
       "id": "6b1d4c1f-0001-4d66-8b62-0000000000b1",
       "name": "Événement reçu",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [0, 200],
+      "position": [
+        0,
+        200
+      ],
       "webhookId": "2f6b0d8e-5c1a-4e3b-9d7f-5c0d1e2f3a4b"
     },
     {
@@ -23,18 +28,30 @@
       "name": "Vérifier la signature",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [220, 200]
+      "position": [
+        220,
+        200
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 2 },
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
           "conditions": [
             {
               "id": "c1000000-0000-4000-8000-000000000001",
               "leftValue": "={{ $json.valide }}",
               "rightValue": true,
-              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
             }
           ],
           "combinator": "and"
@@ -45,32 +62,49 @@
       "name": "Signature valide ?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [440, 200]
+      "position": [
+        440,
+        200
+      ]
     },
     {
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ { \"erreur\": \"signature refusée\" } }}",
-        "options": { "responseCode": 401 }
+        "options": {
+          "responseCode": 401
+        }
       },
       "id": "6b1d4c1f-0004-4d66-8b62-0000000000b4",
       "name": "Refuser (401)",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.4,
-      "position": [660, 320]
+      "position": [
+        660,
+        320
+      ]
     },
     {
       "parameters": {
         "source": "database",
-        "workflowId": { "__rl": true, "value": "", "mode": "list" },
+        "workflowId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
         "mode": "each",
-        "options": { "waitForSubWorkflow": true }
+        "options": {
+          "waitForSubWorkflow": true
+        }
       },
       "id": "6b1d4c1f-0007-4d66-8b62-0000000000b7",
       "name": "Envoyer l'e-mail",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
-      "position": [660, 100],
+      "position": [
+        660,
+        100
+      ],
       "onError": "continueErrorOutput",
       "notes": "Choisir le workflow « SCD – Envoyer un e-mail » dans la liste.",
       "notesInFlow": true
@@ -78,41 +112,187 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ { \"ok\": true, \"journal_efface\": $json.journal_efface === true } }}",
-        "options": { "responseCode": 200 }
+        "responseBody": "={{ { \"ok\": true } }}",
+        "options": {
+          "responseCode": 200
+        }
       },
       "id": "6b1d4c1f-0008-4d66-8b62-0000000000b8",
       "name": "E-mail parti (200)",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.4,
-      "position": [900, 20]
+      "position": [
+        900,
+        20
+      ]
     },
     {
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ { \"erreur\": \"envoi impossible\" } }}",
-        "options": { "responseCode": 502 }
+        "options": {
+          "responseCode": 502
+        }
       },
       "id": "6b1d4c1f-0009-4d66-8b62-0000000000b9",
       "name": "E-mail non parti (502)",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.4,
-      "position": [900, 180]
+      "position": [
+        900,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Après la réponse à l'application : on ne garde que l'identifiant Brevo de l'e-mail (ni nom, ni adresse, ni lien).\nconst id = $('Envoyer l\\'e-mail').first().json.messageId;\nreturn id ? [{ json: { messageId: id } }] : [];"
+      },
+      "id": "6b1d4c1f-000a-4d66-8b62-0000000000ba",
+      "name": "Garder l'identifiant seul",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        20
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 20,
+        "unit": "seconds"
+      },
+      "id": "6b1d4c1f-000b-4d66-8b62-0000000000bb",
+      "name": "Attendre 20 s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1340,
+        20
+      ],
+      "webhookId": "7a2c1e9f-3b4d-4f6a-8c1e-2d3f4a5b6c7d",
+      "notes": "Laisse à Brevo le temps de créer le journal de l'e-mail. Moins de 65 s : n8n attend en mémoire, sans rien écrire dans sa base.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "=https://api.brevo.com/v3/smtp/log/{{ encodeURIComponent($json.messageId) }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "6b1d4c1f-000c-4d66-8b62-0000000000bc",
+      "name": "Effacer le journal Brevo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1560,
+        20
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Brevo API SCD"
+        }
+      },
+      "notes": "Choisir l'identifiant « Brevo API SCD » (Header Auth).",
+      "notesInFlow": true
     }
   ],
   "connections": {
-    "Événement reçu": { "main": [[{ "node": "Vérifier la signature", "type": "main", "index": 0 }]] },
-    "Vérifier la signature": { "main": [[{ "node": "Signature valide ?", "type": "main", "index": 0 }]] },
+    "Événement reçu": {
+      "main": [
+        [
+          {
+            "node": "Vérifier la signature",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vérifier la signature": {
+      "main": [
+        [
+          {
+            "node": "Signature valide ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Signature valide ?": {
       "main": [
-        [{ "node": "Envoyer l'e-mail", "type": "main", "index": 0 }],
-        [{ "node": "Refuser (401)", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Envoyer l'e-mail",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Refuser (401)",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Envoyer l'e-mail": {
       "main": [
-        [{ "node": "E-mail parti (200)", "type": "main", "index": 0 }],
-        [{ "node": "E-mail non parti (502)", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "E-mail parti (200)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "E-mail non parti (502)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "E-mail parti (200)": {
+      "main": [
+        [
+          {
+            "node": "Garder l'identifiant seul",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Garder l'identifiant seul": {
+      "main": [
+        [
+          {
+            "node": "Attendre 20 s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attendre 20 s": {
+      "main": [
+        [
+          {
+            "node": "Effacer le journal Brevo",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },

@@ -19,7 +19,7 @@ Cahier des charges : `OneDrive - CDL EXPERTISES\DEV-CONSULT\SCD\SCD Services\PRO
 - **Deux bibliothèques servies par l'application au téléphone du salarié** (jamais par un site tiers), copiées telles quelles depuis npm dans `public/vendor/`, versions figées, empreintes vérifiées par un test (`public/vendor/EMPREINTES.json`) : **pdf.js** 6.3.289 (Mozilla, Apache-2.0) pour transformer les PDF en images, et **libheif** 1.23.2 (LGPL-3.0) pour lire les photos HEIC d'iPhone. Le téléphone ne les télécharge que si le salarié envoie un PDF ou une photo HEIC.
 - **Pages rendues côté serveur.** Seule la page de dépôt du salarié charge un script (`public/depot.js`, servi par l'application elle-même, sans script en ligne ni domaine tiers). Sans ce script, l'envoi classique des formulaires fonctionne quand même.
 - **Tous les e-mails passent par n8n** (instance dédiée), via des webhooks signés HMAC-SHA256 (`src/notifications.js`). L'application n'envoie jamais d'e-mail elle-même : elle rédige chaque message, n8n se contente de l'envoyer par Brevo (phase 1), puis par Outlook (phase 2).
-- **Les pièces ne partent jamais par e-mail** (`src/envoi.js`). À l'essai réel du 18/10/2026, Brevo conservait les pièces jointes dans ses journaux. Désormais, l'e-mail « pièces reçues » contient un bouton « Télécharger les pièces » : la personne qui a fait la demande se connecte et télécharge les PDF (un par un, ou en ZIP écrit par l'application, `src/zip.js`), fabriqués à la demande, en mémoire. n8n ne manipule plus aucune pièce, et il efface le journal Brevo de chaque e-mail juste après l'envoi.
+- **Les pièces ne partent jamais par e-mail** (`src/envoi.js`). À l'essai réel du 18/10/2026, Brevo conservait les pièces jointes dans ses journaux. Désormais, l'e-mail « pièces reçues » contient un bouton « Télécharger les pièces » : la personne qui a fait la demande se connecte et télécharge les PDF (un par un, ou en ZIP écrit par l'application, `src/zip.js`), fabriqués à la demande, en mémoire. n8n ne manipule plus aucune pièce, et il efface le journal Brevo de chaque e-mail une vingtaine de secondes après l'envoi, une fois la réponse rendue à l'application.
 - **Projet distinct de Constats et de PENA :** son propre dépôt, son image, sa base, ses secrets et son projet Docker. Seul le Traefik du VPS est partagé.
 
 ## Ce qui se modifie sans toucher au code
@@ -75,7 +75,7 @@ Les écrans de réglage des durées et des textes depuis l'administration arrive
 | **Aucune pièce par e-mail** : l'e-mail « pièces reçues » (objet `[Embauche] Pièces reçues – Mme NOM – demande du JJ/MM/AAAA`, liste des pièces, mentions « À VÉRIFIER » et « CONTRÔLE SEULEMENT ») contient seulement un bouton vers la page de téléchargement | `src/emails.js`, `src/envoi.js` |
 | Page de téléchargement réservée à la personne qui a fait la demande (même l'administratrice n'y a pas accès), connexion obligatoire ; PDF un par un ou ZIP ; réponses `no-store` | `src/app.js`, `src/pages.js`, `src/zip.js` |
 | Effacement des pièces, du lien et de l'e-mail du salarié : sur confirmation (« J'ai enregistré les pièces »), sinon 24 h après le premier téléchargement, et au plus tard à J+15 ; il ne reste que civilité, nom et statut | `src/envoi.js` |
-| Journal Brevo de **chaque** e-mail effacé par n8n juste après l'envoi (les journaux gardaient le contenu, liens personnels compris) ; un échec d'effacement est noté dans le journal d'activité | `deploy/n8n/SCD_envoyer_un_email.json`, `src/compteur.js` |
+| Journal Brevo de **chaque** e-mail effacé par n8n 20 s après l'envoi, une fois la réponse rendue à l'application (les journaux gardaient le contenu, liens personnels compris) ; n8n ne garde pendant ces 20 s que l'identifiant Brevo de l'e-mail, en mémoire | `deploy/n8n/SCD_evenements_application.json` |
 | E-mail non parti (n8n ou Brevo en panne) : nouvelles tentatives à 15 min, 1 h et 4 h, puis alerte à l'administratrice et bouton « Relancer l'envoi » ; les pièces restent téléchargeables pendant ce temps | `src/envoi.js` |
 | Relance du salarié à J+7 avec le même lien : le lien est gardé **chiffré** (AES-256-GCM) et effacé dès l'envoi du dossier ; pas de relance après la date limite | `src/relances.js`, `src/demandes.js` |
 | Alertes sans nom ni donnée de salarié : seulement l'identifiant technique de la demande | `config/textes.json` |
@@ -117,8 +117,8 @@ Seuils retenus (`config/controles.json`) : netteté 55, luminosité 60 à 235, r
 Livrables dans `deploy/` :
 
 - `docker-compose.scd-pieces.yml` : projet Docker **séparé** `scd-pieces` (l'application et son n8n dédié), sur le réseau `root_default` pour Traefik, plus un réseau privé `scd-interne` entre l'application et n8n ;
-- `n8n/SCD_envoyer_un_email.json` : sous-workflow unique d'envoi, piloté par `EMAIL_PROVIDER=brevo|outlook`, qui efface ensuite le journal Brevo de l'e-mail ;
-- `n8n/SCD_evenements_application.json` : réception des e-mails rédigés par l'application (signature HMAC vérifiée, horodatage de moins de 5 minutes) ;
+- `n8n/SCD_envoyer_un_email.json` : sous-workflow unique d'envoi, piloté par `EMAIL_PROVIDER=brevo|outlook` ;
+- `n8n/SCD_evenements_application.json` : réception des e-mails rédigés par l'application (signature HMAC vérifiée, horodatage de moins de 5 minutes), réponse à l'application, puis effacement du journal Brevo ;
 - `GUIDE_DEPLOIEMENT.md` : déploiement pas à pas (qui fait quoi), ce que n8n et Brevo conservent ;
 - `PROCEDURE_TEST_PURGE.md` : démontrer qu'il ne reste aucune trace des pièces (disque, base, n8n, Brevo, journaux).
 
@@ -132,7 +132,8 @@ Livrables dans `deploy/` :
 
 - Un navigateur sans script (cas très rare sur téléphone) ne peut envoyer que des photos JPEG, ou des PNG simples (sans transparence) ; pas de PDF. Sans script, l'orientation des photos JPEG n'est pas corrigée.
 - Le test de bout en bout HEIC a besoin d'une photo HEIC d'exemple, non versionnée (voir « Tests »).
-- L'effacement d'un journal Brevo est traité par Brevo sous 72 h au plus (d'après son aide).
+- L'effacement d'un journal Brevo est traité par Brevo sous 72 h au plus (d'après son aide). Un échec d'effacement n'est pas signalé à l'application : le contrôle se fait dans les journaux Brevo (procédure de test de purge).
+- 18/10/2026 : l'effacement fait avant la réponse de n8n dépassait les 10 s d'attente de l'application (invitation partie mais demande annulée) ; il se fait désormais après la réponse, et l'application attend jusqu'à 20 s.
 - Phase 2 (Outlook) : le choix EMAIL_PROVIDER est en place, mais le nœud Outlook lui-même sera ajouté lors de la bascule (n8n refuse de publier un nœud Outlook sans identifiant).
 - Le suivi de l'étape 6 n'est pas encore fait : pas de bouton « Relancer » ni « Annuler » pour la personne qui a fait la demande, pas de réglage des durées et des textes depuis l'administration.
 
