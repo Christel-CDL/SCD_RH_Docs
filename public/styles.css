@@ -3,11 +3,11 @@
   --fond: #f5f6f8;
   --texte: #1c2430;
   --secondaire: #4a5565;
-  --accent: #0b5cad;
-  --accent-fonce: #084a8c;
+  --accent: #602075;          /* violet du logo Essentiel & Domicile ; contraste sur blanc ≈ 11:1 */
+  --accent-fonce: #461556;
   --erreur: #a4161a;
   --erreur-fond: #fdecec;
-  --info-fond: #e8f1fb;
+  --info-fond: #f4ebf6;
   --bord: #c9d0da;
 }
 
@@ -32,9 +32,12 @@ body {
   gap: .5rem;
   padding: .75rem 1rem;
   background: #fff;
-  border-bottom: 1px solid var(--bord);
+  border-bottom: 6px solid var(--accent); /* bandeau violet, comme sur le site de l'agence */
 }
-.agence { margin: 0; font-weight: 700; }
+.agence { margin: 0; font-weight: 700; display: flex; align-items: center; gap: .75rem; }
+.logo { display: block; width: 56px; height: 56px; }
+.lieu { display: inline-flex; align-items: center; gap: .3rem; font-size: 1.35rem; font-style: italic; color: var(--texte); }
+.lieu svg { flex: none; }
 .deconnexion { display: flex; align-items: center; gap: .5rem; font-size: .95rem; color: var(--secondaire); }
 
 main { max-width: 36rem; margin: 0 auto; padding: 1.25rem 1rem 3rem; }

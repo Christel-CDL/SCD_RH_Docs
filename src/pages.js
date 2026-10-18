@@ -36,7 +36,10 @@ function gabarit({ titre, contenu, session = null, agence, large = false, script
 <body>
   <a class="evitement" href="#contenu">Aller au contenu</a>
   <header class="entete">
-    <p class="agence">${echapper(agence)}</p>
+    <p class="agence">
+      <img class="logo" src="/logo.jpg" alt="Essentiel &amp; Domicile" width="56" height="56">
+      <span class="lieu"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="20" height="20"><path fill="none" stroke="currentColor" stroke-width="2" d="M12 21s-6.5-6.6-6.5-11.5a6.5 6.5 0 0 1 13 0C18.5 14.4 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.3" fill="none" stroke="currentColor" stroke-width="2"/></svg>${echapper(agence.replace(/^Essentiel\s*&\s*Domicile\s*/i, '') || agence)}</span>
+    </p>
     ${barre}
   </header>
   <main id="contenu"${large ? ' class="large"' : ''}>

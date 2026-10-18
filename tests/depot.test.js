@@ -251,7 +251,7 @@ test('le style et le script sont revalidés à chaque affichage : une mise à jo
   // Défaut vu le 17/10/2026 : « max-age=3600 » gardait l'ancien CSS une heure après la correction.
   const app = await demarrer();
   try {
-    for (const fichier of ['/styles.css', '/depot.js']) {
+    for (const fichier of ['/styles.css', '/depot.js', '/logo.jpg']) {
       const r = await app.envoyer(fichier);
       assert.equal(r.status, 200);
       assert.equal(r.headers.get('cache-control'), 'no-cache');

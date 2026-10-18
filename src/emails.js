@@ -11,10 +11,10 @@ const echapper = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<
 export function versHtml(texte, { lien = null, bouton = null, secours = '' } = {}) {
   const corps = String(texte).split('\n').map((ligne) => {
     if (lien && bouton && ligne.trim() === lien) {
-      return `<p style="margin:24px 0"><a href="${echapper(lien)}" style="display:inline-block;background:#0b5cad;color:#ffffff;`
+      return `<p style="margin:24px 0"><a href="${echapper(lien)}" style="display:inline-block;background:#602075;color:#ffffff;`
         + 'font-size:18px;font-weight:bold;text-decoration:none;padding:14px 28px;border-radius:6px">'
         + `${echapper(bouton)}</a></p><p style="margin:0 0 16px;font-size:13px;color:#4a5565">${echapper(secours)}<br>`
-        + `<a href="${echapper(lien)}" style="color:#0b5cad;word-break:break-all">${echapper(lien)}</a></p>`;
+        + `<a href="${echapper(lien)}" style="color:#602075;word-break:break-all">${echapper(lien)}</a></p>`;
     }
     return ligne.trim() ? `${echapper(ligne)}<br>` : '<br>';
   }).join('\n');

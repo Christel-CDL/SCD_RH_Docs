@@ -29,7 +29,7 @@ import {
 import * as pages from './pages.js';
 
 const DOSSIER_PUBLIC = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
-const FICHIERS_PUBLICS = { '/styles.css': 'text/css; charset=utf-8', '/depot.js': 'text/javascript; charset=utf-8' };
+const FICHIERS_PUBLICS = { '/styles.css': 'text/css; charset=utf-8', '/depot.js': 'text/javascript; charset=utf-8', '/logo.jpg': 'image/jpeg' };
 // Bibliothèques servies par l'application elle-même (jamais par un site tiers) : liste fermée de types,
 // chemin sans « .. » ni caractère inattendu. Versions et empreintes dans public/vendor/EMPREINTES.json.
 const VENDOR = /^\/vendor\/(?:pdfjs|libheif)(?:\/[A-Za-z0-9_-]+)*\/[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*\.(mjs|wasm|pfb|ttf)$/;
