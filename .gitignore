@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+deploy/*.env
 data/
 node_modules/
 *.db
