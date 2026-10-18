@@ -125,6 +125,8 @@ D'après l'aide de Brevo (octobre 2026), les **journaux et aperçus des e-mails 
 
 En filet de sécurité, réglez aussi la durée de conservation la plus courte : **Paramètres → E-mails transactionnels → Règles de conservation**. Ce réglage s'applique à tout le compte, donc aussi à Constats et PENA.
 
+**Suivi des ouvertures et des clics** (constaté le 18/10/2026 : événements « Ouvert », « Cliqué ») : Brevo réécrit les liens des e-mails et ajoute un pixel. Il n'offre pas de désactivation complète pour les e-mails transactionnels, seulement : **Paramètres → Automations → E-mails transactionnels → Suivi → Suivi anonyme des emails : Oui**, et **Paramètres → Contacts → consentement au pixel de suivi** : « Non » pour les contacts au consentement inconnu (recommandation CNIL). Les deux valent pour tout le compte (Constats, PENA). Les liens de dépôt transitent donc par Brevo : ils n'ouvrent qu'une demande, expirent et deviennent inutilisables à l'envoi du dossier. Seul l'envoi par Outlook (phase 2) supprime ce passage.
+
 **Risque résiduel**, à mentionner dans le registre des traitements (Brevo, sous-traitant ultérieur) : pendant au plus 72 h, Brevo garde l'e-mail (nom du salarié, liste des pièces, lien personnel), jamais le contenu des pièces.
 
 ## Passage à Outlook (phase 2, plus tard)
