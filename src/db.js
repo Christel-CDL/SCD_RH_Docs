@@ -130,6 +130,12 @@ const MIGRATIONS = [
   ALTER TABLE demandes ADD COLUMN jeton_chiffre TEXT;
   ALTER TABLE demandes ADD COLUMN relance_le INTEGER;
   `,
+  // 7 — étape 6 : relance à la main (au plus une par 24 h) et annulation (la ligne « Annulée » reste jusqu'à J+15,
+  //     sans pièce, sans lien chiffré ni e-mail du salarié ; l'empreinte du lien reste pour afficher « demande annulée »).
+  `
+  ALTER TABLE demandes ADD COLUMN relance_manuelle_le INTEGER;
+  ALTER TABLE demandes ADD COLUMN annulee_le INTEGER;
+  `,
 ];
 
 export function ouvrirBase(dataDir) {

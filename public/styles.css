@@ -102,6 +102,9 @@ h2 { font-size: 1.3rem; margin: 2rem 0 .75rem; }
 .bouton.secondaire { background: #fff; color: var(--accent); border: 2px solid var(--accent); }
 .bouton.secondaire:hover { background: var(--info-fond); }
 .bouton.danger { background: var(--erreur); }
+.lien.danger { color: var(--erreur); padding-left: 0; }
+.suivi { display: flex; flex-direction: column; align-items: flex-start; gap: .25rem; margin-top: .5rem; }
+.suivi form { margin: 0; }
 .bouton.petit { width: auto; min-height: 2.75rem; padding: .5rem 1rem; font-size: 1rem; }
 
 .filtres { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }

@@ -22,6 +22,8 @@ export const ACTIONS = {
   envoi_relance: 'Envoi des pièces relancé',
   envoi_relance_par_admin: 'Relance d\'un envoi par l\'administratrice',
   relance_salarie: 'Relance automatique envoyée au salarié',
+  relance_manuelle: 'Salarié relancé à la main',
+  demande_annulee: 'Demande annulée : pièces et lien du salarié supprimés',
   journal_brevo_non_efface: 'Journal Brevo d\'un e-mail non effacé (à supprimer à la main dans Brevo)',
   pieces_annoncees: 'Dossier complet annoncé par e-mail à la personne qui l\'a demandé',
   piece_telechargee: 'Pièce téléchargée',

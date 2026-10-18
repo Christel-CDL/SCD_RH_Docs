@@ -4,6 +4,7 @@
 import { dateCourte, dateHeure, dateLongue, dateJour } from './dates.js';
 import { TYPES, STATUTS } from './demandes.js';
 import { ACTIONS } from './utilisateurs.js';
+import { prochaineRelance } from './relances.js';
 
 export function echapper(valeur) {
   return String(valeur ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -112,6 +113,24 @@ export function pageAccueil({ agence, session, demandes, filtre = null, info = '
     .map(([valeur, libelle]) => (valeur === filtre
       ? `<span class="filtre actif" aria-current="page">${libelle}</span>`
       : `<a class="filtre" href="/${valeur ? `?type=${valeur}` : ''}">${libelle}</a>`)).join('');
+  // Boutons de suivi (étape 6) : relancer le salarié (au plus une fois par 24 h) et annuler la demande.
+  const suivi = (d) => {
+    const enCours = ['envoyee', 'en_cours'].includes(d.statut);
+    if (!enCours && d.statut !== 'complete') return '';
+    const prochaine = prochaineRelance(d);
+    const derniere = Math.max(d.relance_le || 0, d.relance_manuelle_le || 0);
+    let relance = '';
+    if (enCours && d.relancable && d.date_limite > Date.now()) {
+      relance = prochaine && prochaine > Date.now()
+        ? `<p class="discret">Relancé le ${dateHeure(derniere)}. Nouvelle relance possible à partir du ${dateHeure(prochaine)}.</p>`
+        : `${derniere ? `<p class="discret">Dernière relance : ${dateHeure(derniere)}.</p>` : ''}
+          <form method="post" action="/demandes/${echapper(d.id)}/relancer">${csrf(session)}
+            <button type="submit" class="bouton petit secondaire">Relancer le salarié</button></form>`;
+    }
+    return `<div class="suivi">${relance}
+          <form method="post" action="/demandes/${echapper(d.id)}/annuler">${csrf(session)}
+            <button type="submit" class="lien danger">Annuler la demande</button></form></div>`;
+  };
   const lignes = demandes.map((d) => `
       <li class="carte">
         <p class="carte-titre">${echapper(d.civilite)} ${echapper(d.nom)}</p>
@@ -121,6 +140,8 @@ export function pageAccueil({ agence, session, demandes, filtre = null, info = '
         ${d.statut === 'complete' ? `<p><a class="bouton petit" href="/demandes/${echapper(d.id)}/pieces">Télécharger les pièces</a></p>` : ''}
         ${d.statut === 'transmise' ? `<p class="discret">Pièces récupérées, puis supprimées de l'outil le ${dateCourte(d.transmise_le)}.</p>` : ''}
         ${['envoyee', 'en_cours'].includes(d.statut) ? `<p class="discret">Date limite : ${dateCourte(d.date_limite)}</p>` : ''}
+        ${d.statut === 'annulee' ? `<p class="discret">Annulée le ${dateCourte(d.annulee_le)} : pièces déposées et lien du salarié supprimés.</p>` : ''}
+        ${suivi(d)}
       </li>`).join('');
   return gabarit({
     agence,
@@ -406,6 +427,25 @@ export function pageAdminUtilisateurs({
   });
 }
 
+export function pageConfirmerAnnulation({ agence, session, demande }) {
+  return gabarit({
+    agence,
+    session,
+    titre: 'Annuler une demande',
+    contenu: `
+    <h1>Annuler cette demande ?</h1>
+    <p>Demande de ${echapper(demande.civilite)} ${echapper(demande.nom)} (${echapper(TYPES[demande.type].toLowerCase())} du ${dateCourte(demande.cree_le)}).</p>
+    <p>Les pièces déjà déposées et le lien du salarié seront <strong>supprimés aussitôt</strong>. Le salarié ne reçoit pas d'e-mail ;
+      s'il ouvre son lien, il verra que la demande est annulée. Cette action est définitive.</p>
+    <form method="post" action="/demandes/${echapper(demande.id)}/annuler" class="formulaire">
+      ${csrf(session)}
+      <input type="hidden" name="confirme" value="oui">
+      <button type="submit" class="bouton danger">Oui, annuler la demande</button>
+    </form>
+    <p><a href="/">Non, revenir à mes demandes</a></p>`,
+  });
+}
+
 export function pageConfirmerSuppression({ agence, session, utilisateur }) {
   return gabarit({
     agence,
@@ -499,7 +539,10 @@ export function pageGuide({ agence, session = null, appUrl, contact, minutesLien
           <li><strong>En cours</strong> : le nombre de pièces déposées est indiqué.</li>
           <li><strong>Complète : pièces à télécharger</strong> : le dossier est arrivé.</li>
           <li><strong>Pièces récupérées</strong> : vous les avez enregistrées, elles sont supprimées de l'outil.</li>
+          <li><strong>Annulée</strong> : vous avez annulé la demande.</li>
         </ul>
+        <p>« Relancer le salarié » lui renvoie le même lien (une fois par 24 heures au plus). « Annuler la demande »
+          supprime aussitôt les pièces déposées et le lien.</p>
       </section>
       </div>
       <div class="guide-colonne">

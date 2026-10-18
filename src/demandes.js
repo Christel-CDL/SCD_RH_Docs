@@ -55,9 +55,11 @@ export function creerDemandes({ db, config }) {
     parId: db.prepare('SELECT * FROM demandes WHERE id = ?'),
     // Le lien reste lisible une fois le dossier complet (écran de confirmation) ; annulé ou expiré, il ne mène plus à rien.
     parJeton: db.prepare(`SELECT * FROM demandes WHERE jeton_empreinte = ? AND statut IN ('envoyee', 'en_cours', 'complete') AND expire_le > ?`),
+    annuleeParJeton: db.prepare("SELECT 1 FROM demandes WHERE jeton_empreinte = ? AND statut = 'annulee'"),
     pieces: db.prepare('SELECT abrev, abrev_fournie, statut, a_verifier FROM pieces WHERE demande_id = ? ORDER BY rowid'),
     lister: db.prepare(`
-      SELECT d.id, d.type, d.civilite, d.nom, d.statut, d.cree_le, d.date_limite, d.transmise_le,
+      SELECT d.id, d.type, d.civilite, d.nom, d.statut, d.cree_le, d.date_limite, d.transmise_le, d.annulee_le,
+             d.relance_le, d.relance_manuelle_le, d.jeton_chiffre IS NOT NULL AS relancable,
              COUNT(p.id) AS total, SUM(p.statut = 'deposee') AS deposees,
              (SELECT e.statut FROM envois e WHERE e.demande_id = d.id) AS envoi
       FROM demandes d LEFT JOIN pieces p ON p.demande_id = d.id
@@ -96,9 +98,11 @@ export function creerDemandes({ db, config }) {
     return requetes.parJeton.get(empreinte(jeton), Date.now()) || null;
   }
 
+  // Le lien d'une demande annulée : le salarié voit « demande annulée » au lieu de « lien plus valable ».
+  const annulee = (jeton) => FORME_JETON.test(String(jeton || '')) && Boolean(requetes.annuleeParJeton.get(empreinte(jeton)));
   const pieces = (demandeId) => requetes.pieces.all(demandeId);
   const lister = (utilisateurId, type = null) => requetes.lister.all(utilisateurId, type, type);
   const lienSalarie = (jeton) => `${config.appUrl}/d/${jeton}`;
 
-  return { creer, abandonner, parJeton, pieces, lister, lienSalarie };
+  return { creer, abandonner, parJeton, annulee, pieces, lister, lienSalarie };
 }

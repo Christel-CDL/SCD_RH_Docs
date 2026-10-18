@@ -217,7 +217,8 @@ test('page d\'aide : réservée aux personnes connectées, reprend les vrais lib
     assert.match(accueil, /<a href="\/aide">Aide<\/a>/);
     const page = await (await app.envoyer('/aide', { cookie })).text();
     for (const libelle of ['Recevoir mon lien de connexion', 'Nouvelle embauche', 'Envoyer l\'invitation au salarié',
-      'Déposer mes documents', 'Télécharger les pièces', 'J\'ai enregistré les pièces : les supprimer de l\'outil', '15 jours']) {
+      'Déposer mes documents', 'Télécharger les pièces', 'J\'ai enregistré les pièces : les supprimer de l\'outil', '15 jours',
+      'Relancer le salarié', 'Annuler la demande']) {
       assert.ok(page.includes(libelle.replace(/'/g, '&#39;')) || page.includes(libelle), libelle);
     }
     assert.match(page, /relance automatique au bout\s+de 7 jours/);

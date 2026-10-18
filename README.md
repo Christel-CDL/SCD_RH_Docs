@@ -11,7 +11,7 @@ Cahier des charges : `OneDrive - CDL EXPERTISES\DEV-CONSULT\SCD\SCD Services\PRO
 | 3 | Dépôt avec brouillon (pièces chiffrées AES-256-GCM) | **fait** |
 | 4 | Contrôle de lisibilité, génération des PDF | **fait** |
 | 5 | Envoi par n8n, téléchargement des pièces, purge vérifiée | **fait**, en ligne sur le VPS |
-| 6 | Relances, expiration, suivi | **en cours** (décisions du 18/10/2026 dans CLAUDE.md) : relance du salarié à J+7, e-mail d'expiration et guide utilisateur faits ; restent « Relancer », « Annuler », l'écran « Réglages », la note d'architecture et la fiche du registre |
+| 6 | Relances, expiration, suivi | **en cours** (décisions du 18/10/2026 dans CLAUDE.md) : relance du salarié à J+7, e-mail d'expiration, guide utilisateur, boutons « Relancer le salarié » (une fois par 24 h, `src/relances.js`) et « Annuler la demande » (`src/annulation.js`) faits ; restent l'écran « Réglages », la note d'architecture et la fiche du registre |
 
 Guide d'une page pour les personnes qui font les demandes : page **Aide** de l'application (`/aide`, imprimable) et `docs/Guide_utilisateur_agence.pdf`, refait par `node tests/e2e/guide-pdf.mjs docs/Guide_utilisateur_agence.pdf` après toute modification du texte (`pageGuide` dans `src/pages.js`).
 

@@ -17,6 +17,7 @@ import { creerCompteur } from './compteur.js';
 import { creerEnvoi } from './envoi.js';
 import { creerPurge } from './purge.js';
 import { creerRelances } from './relances.js';
+import { creerAnnulation } from './annulation.js';
 import { creerEmails } from './emails.js';
 import { creerDemandes, validerDemande, TYPES } from './demandes.js';
 import { creerUtilisateurs } from './utilisateurs.js';
@@ -49,6 +50,11 @@ const INFOS = {
   relance: 'L\'envoi est relancé. Vérifiez dans quelques minutes qu\'il a disparu de la liste des envois en échec.',
   relance_impossible: 'Cet envoi ne peut plus être relancé (déjà parti, ou purgé).',
   pieces_effacees: 'Les pièces ont été supprimées de l\'outil.',
+  salarie_relance: 'Le salarié a été relancé : il a reçu un nouvel e-mail avec le même lien.',
+  relance_trop_tot: 'Le salarié a déjà été relancé il y a moins de 24 heures. Réessayez plus tard.',
+  relance_salarie_impossible: 'Cette demande ne peut plus être relancée (dossier envoyé, annulé ou date limite passée).',
+  relance_echec: 'La relance n\'a pas pu partir. Réessayez dans quelques minutes.',
+  demande_annulee: 'La demande est annulée : les pièces déposées et le lien du salarié sont supprimés.',
 };
 
 // Le jeton du salarié est dans le chemin (/d/<jeton>) : il est masqué dans le journal d'accès.
@@ -72,6 +78,7 @@ export function creerApp({ db, config, notificateur: notificateurBrut, catalogue
   const envoi = creerEnvoi({ db, config, emails, depot, notificateur, reglagesEnvoi });
   const purge = creerPurge({ db, stockage, emails, notificateur });
   const relances = creerRelances({ db, config, catalogue, emails, notificateur, reglagesEnvoi });
+  const annulation = creerAnnulation({ db, depot });
   purge.purger();
   const entetes = enTetesSecurite(config);
   const agence = config.agence;
@@ -117,7 +124,9 @@ export function creerApp({ db, config, notificateur: notificateurBrut, catalogue
     }
     const demande = demandes.parJeton(jeton);
     if (demande) return demande;
-    const texte = 'Ce lien n\'est plus valable. Contactez l\'agence qui vous l\'a envoyé.';
+    const texte = demandes.annulee(jeton)
+      ? 'Cette demande a été annulée par l\'agence : vous n\'avez plus rien à déposer. Contactez l\'agence en cas de question.'
+      : 'Ce lien n\'est plus valable. Contactez l\'agence qui vous l\'a envoyé.';
     if (json) envoyerJson(res, 410, { erreur: texte });
     else html(res, 410, pages.pageMessage({ agence, titre: 'Lien inactif', message: texte }));
     return null;
@@ -265,6 +274,24 @@ export function creerApp({ db, config, notificateur: notificateurBrut, catalogue
           'Cache-Control': 'no-store',
         });
         res.end(fichier.contenu);
+      },
+    },
+    // ── Suivi (étape 6) : relancer le salarié à la main, annuler une demande ──
+    {
+      m: 'POST', c: /^\/demandes\/([A-Za-z0-9_-]{16})\/relancer$/, acces: 'session',
+      f: async (req, res, { params: [id], session }) => {
+        const resultat = await relances.relancerALaMain(id, session.id);
+        rediriger(res, `/?ok=${{ ok: 'salarie_relance', trop_tot: 'relance_trop_tot', echec: 'relance_echec' }[resultat] || 'relance_salarie_impossible'}`);
+      },
+    },
+    {
+      m: 'POST', c: /^\/demandes\/([A-Za-z0-9_-]{16})\/annuler$/, acces: 'session',
+      f: (req, res, { params: [id], session, formulaire }) => {
+        const demande = annulation.annulable(id, session.id);
+        if (!demande) return html(res, 404, pages.pageMessage({ agence, session, titre: 'Demande introuvable', message: 'Cette demande n\'existe plus ou ne peut plus être annulée.' }));
+        if (formulaire.get('confirme') !== 'oui') return html(res, 200, pages.pageConfirmerAnnulation({ agence, session, demande }));
+        annulation.annuler(demande.id, session.id);
+        rediriger(res, '/?ok=demande_annulee');
       },
     },
     {
