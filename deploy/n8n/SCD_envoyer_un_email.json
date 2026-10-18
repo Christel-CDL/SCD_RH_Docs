@@ -43,7 +43,6 @@
         "html": "={{ $json.html }}",
         "options": {
           "appendAttribution": false,
-          "fileAttachments": "={{ $json.pieces_binaires || '' }}",
           "replyTo": "={{ $json.repondre_a || '' }}"
         }
       },
@@ -61,6 +60,29 @@
     },
     {
       "parameters": {
+        "method": "DELETE",
+        "url": "=https://api.brevo.com/v3/smtp/log/{{ encodeURIComponent($json.messageId) }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "5a0c3b0e-0006-4c55-9a51-0000000000a6",
+      "name": "Effacer le journal Brevo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, 100],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "httpHeaderAuth": { "id": "", "name": "Brevo API SCD" }
+      },
+      "notes": "Brevo garde dans ses journaux le contenu des e-mails (liens personnels compris). On efface le journal de chaque e-mail dès son envoi. Un échec n'empêche pas l'e-mail : l'application le note dans son journal d'activité.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
         "errorType": "errorMessage",
         "errorMessage": "EMAIL_PROVIDER=outlook, mais l'envoi par Outlook (phase 2) n'est pas encore installé. Remettre EMAIL_PROVIDER=brevo, ou remplacer ce nœud par un nœud Microsoft Outlook (voir deploy/GUIDE_DEPLOIEMENT.md)."
       },
@@ -69,18 +91,28 @@
       "type": "n8n-nodes-base.stopAndError",
       "typeVersion": 1,
       "position": [460, -100],
-      "notes": "Phase 2 seulement. À la bascule : remplacer ce nœud par un nœud « Microsoft Outlook » (envoi de message) relié à la boîte de l'agence, avec les pièces jointes listées dans pieces_binaires. Un nœud Outlook sans identifiant empêche n8n de publier le workflow : il ne peut donc pas être préparé à l'avance.",
+      "notes": "Phase 2 seulement. À la bascule : remplacer ce nœud par un nœud « Microsoft Outlook » (envoi de message) relié à la boîte de l'agence. Un nœud Outlook sans identifiant empêche n8n de publier le workflow : il ne peut donc pas être préparé à l'avance.",
       "notesInFlow": true
     },
     {
       "parameters": {
-        "jsCode": "// Rend au workflow appelant ce qu'il a envoyé (sans les pièces jointes) : il en a besoin pour confirmer l'envoi.\nreturn $('Déclencheur').all().map((item) => ({ json: { ...item.json, envoye: true } }));"
+        "jsCode": "// E-mail parti, journal Brevo effacé.\nreturn [{ json: { envoye: true, journal_efface: true } }];"
       },
       "id": "5a0c3b0e-0005-4c55-9a51-0000000000a5",
       "name": "Résultat",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [700, 0]
+      "position": [940, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// E-mail parti, mais le journal Brevo n'a pas pu être effacé (clé API absente ou refusée).\nreturn [{ json: { envoye: true, journal_efface: false } }];"
+      },
+      "id": "5a0c3b0e-0007-4c55-9a51-0000000000a7",
+      "name": "Résultat (journal non effacé)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [940, 200]
     }
   ],
   "connections": {
@@ -91,7 +123,13 @@
         [{ "node": "Brevo (SMTP)", "type": "main", "index": 0 }]
       ]
     },
-    "Brevo (SMTP)": { "main": [[{ "node": "Résultat", "type": "main", "index": 0 }]] }
+    "Brevo (SMTP)": { "main": [[{ "node": "Effacer le journal Brevo", "type": "main", "index": 0 }]] },
+    "Effacer le journal Brevo": {
+      "main": [
+        [{ "node": "Résultat", "type": "main", "index": 0 }],
+        [{ "node": "Résultat (journal non effacé)", "type": "main", "index": 0 }]
+      ]
+    }
   },
   "settings": {
     "executionOrder": "v1",

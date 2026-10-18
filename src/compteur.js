@@ -2,6 +2,7 @@
 // (300 e-mails par jour en tout) : cette application ne voit que ses propres envois et prévient l'administratrice,
 // une fois par jour, quand elle atteint le pourcentage réglé de sa part (config/envoi.json).
 // S'utilise comme une enveloppe du notificateur : chaque appel réussi à n8n est compté.
+import { journaliser } from './db.js';
 
 const formatJour = new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' });
 export const jourParis = (instant = Date.now()) => formatJour.format(new Date(instant)); // AAAA-MM-JJ
@@ -20,9 +21,15 @@ export function creerCompteur({ db, notificateur, reglagesEnvoi, alerte }) {
   const nbEmails = (evenement, donnees) => (evenement === 'email' ? 1 : (donnees?.messages?.length || 0));
 
   async function envoyer(evenement, donnees) {
-    await notificateur.envoyer(evenement, donnees);
+    const reponse = await notificateur.envoyer(evenement, donnees);
+    // n8n efface le journal Brevo de chaque e-mail juste après l'envoi (Brevo y gardait les pièces jointes et les
+    // liens personnels). S'il n'y arrive pas, on le note : l'administratrice peut supprimer le journal à la main.
+    if (reponse && reponse.journal_efface === false) {
+      console.warn('Journal Brevo non effacé pour un e-mail', donnees?.categorie || '');
+      journaliser(db, 'journal_brevo_non_efface');
+    }
     const n = nbEmails(evenement, donnees);
-    if (!n) return;
+    if (!n) return reponse;
     const jour = jourParis();
     const total = requetes.ajouter.get(jour, n).n;
     requetes.oublier.run(jourParis(Date.now() - 31 * 24 * 3600e3));
@@ -35,6 +42,7 @@ export function creerCompteur({ db, notificateur, reglagesEnvoi, alerte }) {
       });
       envoyer('email', message).catch((e) => console.error('Alerte de quota non envoyée :', e.message));
     }
+    return reponse;
   }
 
   const aujourdhui = () => requetes.lire.get(jourParis())?.n || 0;

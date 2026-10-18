@@ -63,26 +63,25 @@ export function creerEmails({ textes, catalogue, config }) {
     }, { lien, bouton: textes.invitation.bouton });
   }
 
-  // E-mail final à l'assistante, avec les PDF en pièces jointes (n8n les ajoute). Aucune donnée tirée des pièces :
-  // seulement leur nom de fichier, leur libellé et les mentions « à vérifier » / « contrôle seulement ».
-  // pieces : [{ nom, libelle, aVerifier, controleSeulement }] ; numero / total : découpage (1/2, 2/2…).
-  function envoiFinal({ demande, assistante, pieces, numero = 1, total = 1 }) {
+  const valeursDemande = (demande, demandeur) => ({
+    type: demande.type === 'embauche' ? 'Embauche' : 'Mise à jour',
+    civilite: demande.civilite,
+    nom: demande.nom,
+    date_demande: dateCourte(demande.cree_le),
+    demandeur: demandeur.nom || demandeur.email,
+  });
+
+  // E-mail « pièces prêtes » à la personne qui a fait la demande. Il ne contient AUCUNE pièce (Brevo conservait les
+  // pièces jointes, constaté le 18/10/2026) : un bouton mène à la page de téléchargement de l'application.
+  // pieces : [{ nom, libelle, aVerifier, controleSeulement }] ; lien : page de téléchargement.
+  function envoiFinal({ demande, assistante, pieces, lien }) {
     const t = textes.envoi_final;
-    const valeurs = {
-      type: demande.type === 'embauche' ? 'Embauche' : 'Mise à jour',
-      civilite: demande.civilite,
-      nom: demande.nom,
-      date_demande: dateCourte(demande.cree_le),
-      demandeur: assistante.nom || assistante.email,
-      partie: total > 1 ? ` (${numero}/${total})` : '',
-    };
+    const valeurs = { ...valeursDemande(demande, assistante), lien, date_purge: dateLongue(demande.expire_le) };
     valeurs.liste = pieces.map((p) => [
-      `  • ${p.nom} – ${p.libelle}`,
+      `  • ${p.libelle}`,
       ...(p.aVerifier ? [`    ${t.a_verifier}`] : []),
       ...(p.controleSeulement ? [`    ${t.controle_seulement}`] : []),
     ].join('\n')).join('\n');
-    const autres = Array.from({ length: total }, (_, i) => i + 1).filter((n) => n !== numero).map((n) => `(${n}/${total})`).join(', ');
-    valeurs.suite = total > 1 ? `\n${remplir(t.suite, { autres })}` : '';
     const mentions = [
       ...(pieces.some((p) => p.aVerifier) ? [t.mention_a_verifier] : []),
       ...(pieces.some((p) => p.controleSeulement) ? [t.mention_controle_seulement] : []),
@@ -94,6 +93,20 @@ export function creerEmails({ textes, catalogue, config }) {
       destinataire: assistante.email,
       sujet: remplir(t.sujet, valeurs),
       texte: remplir(t.texte, valeurs),
+    }, { lien, bouton: t.bouton });
+  }
+
+  // Expiration du lien sans que les pièces aient été récupérées (demande de Christel du 18/10/2026).
+  // piecesPretes : le dossier était complet mais les pièces n'ont pas été téléchargées.
+  function expiration({ demande, demandeur, piecesPretes }) {
+    const t = textes.expiration;
+    const valeurs = valeursDemande(demande, demandeur);
+    return avecHtml({
+      ...base,
+      categorie: 'expiration',
+      destinataire: demandeur.email,
+      sujet: remplir(t.sujet, valeurs),
+      texte: remplir(piecesPretes ? t.non_telecharge : t.non_envoye, valeurs),
     });
   }
 
@@ -109,5 +122,5 @@ export function creerEmails({ textes, catalogue, config }) {
     });
   }
 
-  return { lienConnexion, invitation, envoiFinal, alerte };
+  return { lienConnexion, invitation, envoiFinal, expiration, alerte };
 }

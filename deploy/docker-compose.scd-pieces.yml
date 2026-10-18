@@ -20,9 +20,6 @@ services:
       # Événements vers le n8n dédié, par le réseau privé du projet (jamais par Internet).
       N8N_WEBHOOK_URL: http://scd-pieces-n8n:5678/webhook/scd-evenements
       N8N_WEBHOOK_SECRET: ${N8N_WEBHOOK_SECRET}
-      # Port interne où n8n télécharge les PDF : non routé par Traefik, protégé par son propre secret.
-      INTERNAL_URL: http://scd-pieces-app:3001
-      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
     volumes:
       - scd-pieces-data:/data                              # base et pièces chiffrées : NE PAS supprimer ce volume
     networks:
@@ -68,7 +65,6 @@ services:
       EMAIL_PROVIDER: brevo                                # brevo (phase 1) ou outlook (phase 2)
       SCD_EXPEDITEUR: pieces@expertform.fr                 # domaine expertform.fr vérifié chez Brevo
       SCD_WEBHOOK_SECRET: ${N8N_WEBHOOK_SECRET}            # même valeur que dans l'application
-      SCD_INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}      # même valeur que dans l'application
     volumes:
       - scd-pieces-n8n:/home/node/.n8n                     # workflows et identifiants chiffrés ; aucune pièce
     networks:

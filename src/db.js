@@ -119,6 +119,11 @@ const MIGRATIONS = [
     n     INTEGER NOT NULL DEFAULT 0
   );
   `,
+  // 5 — plus de pièces jointes (décision du 18/10/2026 : Brevo les conservait) : la personne qui a fait la demande
+  //     télécharge les pièces dans l'application. Date du premier téléchargement (effacement automatique 24 h après).
+  `
+  ALTER TABLE envois ADD COLUMN telecharge_le INTEGER;
+  `,
 ];
 
 export function ouvrirBase(dataDir) {

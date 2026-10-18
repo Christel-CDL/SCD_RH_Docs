@@ -54,7 +54,8 @@ export function chargerTextes(dossier) {
     ['nom_expediteur'], ['lien_secours'], ['lien_connexion', 'sujet'], ['lien_connexion', 'texte'], ['lien_connexion', 'bouton'], ['invitation', 'bouton'],
     ['invitation', 'embauche', 'sujet'], ['invitation', 'embauche', 'intro'],
     ['invitation', 'mise_a_jour', 'sujet'], ['invitation', 'mise_a_jour', 'intro'], ['invitation', 'texte'],
-    ...['sujet', 'texte', 'a_verifier', 'controle_seulement', 'mention_a_verifier', 'mention_controle_seulement', 'suite'].map((m) => ['envoi_final', m]),
+    ...['bouton', 'sujet', 'texte', 'a_verifier', 'controle_seulement', 'mention_a_verifier', 'mention_controle_seulement'].map((m) => ['envoi_final', m]),
+    ['expiration', 'sujet'], ['expiration', 'non_envoye'], ['expiration', 'non_telecharge'],
     ['alerte', 'sujet'], ['alerte', 'texte'],
     ...['petite', 'floue', 'sombre', 'claire', 'reflet', 'forcer', 'bouton_forcer', 'pdf_lecture', 'pdf_pages', 'heic'].map((m) => ['lisibilite', m]),
   ];
@@ -92,7 +93,7 @@ export function chargerControles(dossier) {
   return { lisibilite: sansAide(l), photo: sansAide(photo), pdf: sansAide(pdf) };
 }
 
-// config/envoi.json : découpage des envois, quota d'e-mails, nouvelles tentatives.
+// config/envoi.json : quota d'e-mails, nouvelles tentatives.
 export function chargerReglagesEnvoi(dossier) {
   const brut = JSON.parse(fs.readFileSync(path.join(dossier, 'envoi.json'), 'utf8'));
   const nombre = (cle, min, max) => {
@@ -106,11 +107,9 @@ export function chargerReglagesEnvoi(dossier) {
     throw new Error('envoi.json : « nouvelles_tentatives_minutes » doit lister de 1 à 10 délais, en minutes (1 à 1440)');
   }
   return {
-    seuilDecoupageOctets: nombre('seuil_decoupage_mo', 4, 19) * 1024 * 1024,
     quotaJournalier: nombre('quota_journalier', 1, 300),
     alerteQuotaPourcent: nombre('alerte_quota_pourcent', 10, 100),
     delaisMs: delais.map((d) => d * 60e3),
-    silenceMs: nombre('silence_alerte_heures', 1, 48) * 3600e3,
   };
 }
 

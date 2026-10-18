@@ -27,6 +27,8 @@ export function creerNotificateur(config) {
       signal: AbortSignal.timeout(10_000),
     });
     if (!reponse.ok) throw new Error(`n8n a répondu ${reponse.status}`);
+    // Réponse de n8n, par exemple { ok: true, journal_efface: true } (effacement du journal Brevo de l'e-mail).
+    return reponse.json().catch(() => ({}));
   }
   return { envoyer };
 }

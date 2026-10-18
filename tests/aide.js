@@ -10,32 +10,31 @@ import { creerApp } from '../src/app.js';
 export const ASSISTANTE = 'assistante@exemple.test';
 export const ADMIN = 'admin@exemple.test';
 export const CLE_TEST = 'ab'.repeat(32); // clé fictive, réservée aux tests
-export const SECRET_INTERNE = 'secret-interne-fictif-'.repeat(2); // secret du port interne, réservé aux tests
 
 export async function demarrer({ envoiEnEchec = false } = {}) {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scd-test-'));
   const { config } = lireConfig({
-    DATA_DIR: dataDir, ADMIN_EMAIL: ADMIN, DEV_LOG_LINKS: '1', FILE_ENCRYPTION_KEY: CLE_TEST, INTERNAL_API_SECRET: SECRET_INTERNE,
+    DATA_DIR: dataDir, ADMIN_EMAIL: ADMIN, DEV_LOG_LINKS: '1', FILE_ENCRYPTION_KEY: CLE_TEST,
   });
   const db = ouvrirBase(dataDir);
   assurerAdmin(db, config.adminEmail);
   db.prepare("INSERT INTO utilisateurs (email, nom, role, actif, cree_le) VALUES (?, 'Assistante Fictive', 'assistante', 1, 0)").run(ASSISTANTE);
   db.prepare("INSERT INTO utilisateurs (email, nom, role, actif, cree_le) VALUES ('ancienne@exemple.test', 'Compte Désactivé', 'assistante', 0, 0)").run();
   const boite = [];
-  // n8n simulé : envoiEnEchec fait échouer tout sauf les liens de connexion ; n8n.enPanne, les seuls envois de dossier.
-  const n8n = { enPanne: false };
+  // n8n simulé : envoiEnEchec fait échouer tout sauf les liens de connexion ; n8n.enPanne, les seuls e-mails
+  // « pièces prêtes » ; n8n.reponse : ce que n8n répond (par exemple { journal_efface: false }).
+  const n8n = { enPanne: false, reponse: { ok: true, journal_efface: true } };
   const notificateur = {
     envoyer: async (evenement, donnees) => {
       if (envoiEnEchec && donnees.categorie !== 'lien_connexion') throw new Error('n8n injoignable (simulé)');
-      if (n8n.enPanne && evenement === 'envoi_dossier') throw new Error('n8n injoignable (simulé)');
+      if (n8n.enPanne && donnees.categorie === 'envoi_final') throw new Error('n8n injoignable (simulé)');
       boite.push({ evenement, donnees });
+      return n8n.reponse;
     },
   };
-  const { serveur, serveurInterne, stockage, envoi, purge } = creerApp({ db, config, notificateur });
+  const { serveur, stockage, envoi, purge } = creerApp({ db, config, notificateur });
   await new Promise((ok) => serveur.listen(0, '127.0.0.1', ok));
-  await new Promise((ok) => serveurInterne.listen(0, '127.0.0.1', ok));
   config.appUrl = `http://127.0.0.1:${serveur.address().port}`;
-  config.internalUrl = `http://127.0.0.1:${serveurInterne.address().port}`;
   const base = config.appUrl;
 
   const envoyer = (chemin, { methode = 'GET', formulaire, cookie, origine = base } = {}) => fetch(base + chemin, {
@@ -51,7 +50,6 @@ export async function demarrer({ envoiEnEchec = false } = {}) {
 
   async function fermer() {
     await new Promise((ok) => serveur.close(ok));
-    await new Promise((ok) => serveurInterne.close(ok));
     db.close();
     fs.rmSync(dataDir, { recursive: true, force: true });
   }

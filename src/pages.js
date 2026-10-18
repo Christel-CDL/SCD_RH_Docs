@@ -114,8 +114,8 @@ export function pageAccueil({ agence, session, demandes, filtre = null, info = '
         <p>${echapper(TYPES[d.type])} · demandée le ${dateCourte(d.cree_le)}</p>
         <p><span class="statut statut-${d.statut}">${echapper(STATUTS[d.statut])}</span>
            ${['envoyee', 'en_cours'].includes(d.statut) ? ` · pièces déposées : ${d.deposees || 0} sur ${d.total}` : ''}</p>
-        ${d.statut === 'complete' && d.envoi === 'echec' ? '<p class="erreur-champ">L\'envoi des pièces a échoué : l\'administratrice est prévenue.</p>' : ''}
-        ${d.statut === 'transmise' ? `<p class="discret">Pièces envoyées par e-mail le ${dateCourte(d.transmise_le)}, puis supprimées de l'outil.</p>` : ''}
+        ${d.statut === 'complete' ? `<p><a class="bouton petit" href="/demandes/${echapper(d.id)}/pieces">Télécharger les pièces</a></p>` : ''}
+        ${d.statut === 'transmise' ? `<p class="discret">Pièces récupérées, puis supprimées de l'outil le ${dateCourte(d.transmise_le)}.</p>` : ''}
         ${['envoyee', 'en_cours'].includes(d.statut) ? `<p class="discret">Date limite : ${dateCourte(d.date_limite)}</p>` : ''}
       </li>`).join('');
   return gabarit({
@@ -292,6 +292,44 @@ export function pageDepotTermine({ agence, demande }) {
     <h1>Merci ${echapper(demande.civilite)} ${echapper(demande.nom)}</h1>
     ${message('Votre dossier est complet : il est transmis automatiquement à l\'agence. Vous n\'avez plus rien à faire.')}
     <p>Vos documents seront supprimés de cet outil dès que l'agence les aura reçus. Vous pouvez fermer cette page.</p>`,
+  });
+}
+
+// ── Téléchargement des pièces (personne qui a fait la demande) ─────
+
+export function pagePieces({ agence, session, demande, pieces }) {
+  const titre = `${demande.civilite} ${demande.nom}`;
+  if (demande.statut !== 'complete') {
+    const texte = demande.statut === 'transmise'
+      ? `Les pièces ont été récupérées, puis supprimées de l'outil le ${dateCourte(demande.transmise_le)}.`
+      : 'Le salarié n\'a pas encore envoyé son dossier complet : il n\'y a rien à télécharger pour le moment.';
+    return gabarit({
+      agence, session, titre: 'Pièces', contenu: `<h1>Pièces de ${echapper(titre)}</h1>${message(texte)}<p><a href="/">Revenir à mes demandes</a></p>`,
+    });
+  }
+  const lignes = pieces.map((p) => `
+      <li class="carte">
+        <p class="carte-titre">${echapper(p.libelle)}</p>
+        ${p.aVerifier ? '<p class="erreur-champ">À vérifier : photo peu lisible, envoyée par le salarié malgré le contrôle de lisibilité.</p>' : ''}
+        ${p.controleSeulement ? '<p class="erreur-champ">Contrôle seulement : à consulter puis supprimer, ne pas archiver.</p>' : ''}
+        <p><a class="bouton petit secondaire" href="/demandes/${echapper(demande.id)}/pieces/${echapper(p.abrev)}.pdf">Télécharger ${echapper(p.nom)}</a></p>
+      </li>`).join('');
+  return gabarit({
+    agence,
+    session,
+    titre: 'Pièces',
+    contenu: `
+    <h1>Pièces de ${echapper(titre)}</h1>
+    <p>${echapper(TYPES[demande.type])} · demandée le ${dateCourte(demande.cree_le)}</p>
+    <p><a class="bouton" href="/demandes/${echapper(demande.id)}/pieces/tout.zip">Tout télécharger (un seul fichier ZIP)</a></p>
+    <ul class="cartes">${lignes}</ul>
+    <h2>Une fois les pièces enregistrées</h2>
+    <p>Classez-les dans le dossier du salarié, puis supprimez-les de l'outil. Sans action de votre part, elles le seront automatiquement 24 heures après le premier téléchargement, et au plus tard le ${echapper(dateLongue(demande.expire_le))}.</p>
+    <form method="post" action="/demandes/${echapper(demande.id)}/pieces/effacer" class="formulaire">
+      ${csrf(session)}
+      <button type="submit" class="bouton danger">J'ai enregistré les pièces : les supprimer de l'outil</button>
+    </form>
+    <p><a href="/">Revenir à mes demandes</a></p>`,
   });
 }
 

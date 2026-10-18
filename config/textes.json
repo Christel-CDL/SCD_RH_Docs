@@ -23,11 +23,26 @@
   },
   "_rgpd": "Mention d'information (article 13 du RGPD), affichée en tête de la page de dépôt. Complétée le 18/10/2026 (SCD SERVICES, CDL EXPERTISES, hébergement Hostinger en France) et validée le même jour par le gérant de l'agence, Sébastien DOMINGO, responsable du traitement. Pas de DPO mentionné : la désignation n'est pas obligatoire pour l'agence, et la CNIL considère que le dirigeant ne peut pas être son propre DPO (conflit d'intérêts).",
   "mention_rgpd": [
-    { "titre": "Responsable du traitement", "texte": "SCD SERVICES (agence Essentiel & Domicile de Pessac), SARL au capital de 35 000 €, 22 avenue Jean Jaurès, 33600 Pessac, RCS Bordeaux 887 794 485, SIRET 887 794 485 00011, représentée par son gérant, Sébastien DOMINGO. Contact pour vos données : pessac@essentiel-domicile.fr." },
-    { "titre": "Pourquoi ces documents ?", "texte": "Pour préparer votre embauche ou mettre à jour votre dossier du personnel, et respecter les obligations légales de l'employeur (vérification de l'identité, de l'autorisation de travail, déclarations sociales, paiement du salaire). Base légale : mesures préalables au contrat de travail et exécution de ce contrat (article 6.1.b du RGPD) ; obligations légales de l'employeur (article 6.1.c)." },
-    { "titre": "Qui les reçoit ?", "texte": "Uniquement la personne de l'agence qui vous a envoyé ce lien : son nom figure dans l'e-mail que vous avez reçu. L'outil est exploité pour le compte de l'agence par CDL EXPERTISES (sous-traitant), sur un serveur hébergé par Hostinger en France. Les e-mails sont envoyés par Brevo (France). Aucun document n'est analysé par un service d'intelligence artificielle ou de reconnaissance de texte." },
-    { "titre": "Combien de temps ?", "texte": "Vos documents sont chiffrés et conservés dans cet outil seulement le temps de les transmettre à l'agence, et au plus 15 jours. Ils sont supprimés définitivement dès leur envoi, ou à l'expiration du lien. L'agence les conserve ensuite dans votre dossier du personnel, selon ses propres règles. Le bulletin n°3 du casier judiciaire et le permis de conduire sont seulement consultés par l'agence, pas archivés." },
-    { "titre": "Vos droits", "texte": "Vous pouvez accéder à vos données, les faire corriger ou effacer, demander la limitation de leur traitement ou vous y opposer, en écrivant à l'agence : pessac@essentiel-domicile.fr, ou SCD SERVICES, 22 avenue Jean Jaurès, 33600 Pessac. Si vous estimez que vos droits ne sont pas respectés, vous pouvez saisir la CNIL (cnil.fr)." }
+    {
+      "titre": "Responsable du traitement",
+      "texte": "SCD SERVICES (agence Essentiel & Domicile de Pessac), SARL au capital de 35 000 €, 22 avenue Jean Jaurès, 33600 Pessac, RCS Bordeaux 887 794 485, SIRET 887 794 485 00011, représentée par son gérant, Sébastien DOMINGO. Contact pour vos données : pessac@essentiel-domicile.fr."
+    },
+    {
+      "titre": "Pourquoi ces documents ?",
+      "texte": "Pour préparer votre embauche ou mettre à jour votre dossier du personnel, et respecter les obligations légales de l'employeur (vérification de l'identité, de l'autorisation de travail, déclarations sociales, paiement du salaire). Base légale : mesures préalables au contrat de travail et exécution de ce contrat (article 6.1.b du RGPD) ; obligations légales de l'employeur (article 6.1.c)."
+    },
+    {
+      "titre": "Qui les reçoit ?",
+      "texte": "Uniquement la personne de l'agence qui vous a envoyé ce lien : son nom figure dans l'e-mail que vous avez reçu. L'outil est exploité pour le compte de l'agence par CDL EXPERTISES (sous-traitant), sur un serveur hébergé par Hostinger en France. Les e-mails sont envoyés par Brevo (France). Aucun document n'est analysé par un service d'intelligence artificielle ou de reconnaissance de texte."
+    },
+    {
+      "titre": "Combien de temps ?",
+      "texte": "Vos documents sont chiffrés et conservés dans cet outil seulement le temps de les transmettre à l'agence, et au plus 15 jours. Ils sont supprimés définitivement dès leur envoi, ou à l'expiration du lien. L'agence les conserve ensuite dans votre dossier du personnel, selon ses propres règles. Le bulletin n°3 du casier judiciaire et le permis de conduire sont seulement consultés par l'agence, pas archivés."
+    },
+    {
+      "titre": "Vos droits",
+      "texte": "Vous pouvez accéder à vos données, les faire corriger ou effacer, demander la limitation de leur traitement ou vous y opposer, en écrivant à l'agence : pessac@essentiel-domicile.fr, ou SCD SERVICES, 22 avenue Jean Jaurès, 33600 Pessac. Si vous estimez que vos droits ne sont pas respectés, vous pouvez saisir la CNIL (cnil.fr)."
+    }
   ],
   "aide_depot": [
     "Posez le document à plat, sur une table, près d'une fenêtre ou sous une bonne lumière.",
@@ -39,15 +54,21 @@
     "Vous pouvez vous arrêter à tout moment : les pièces validées sont enregistrées. Revenez plus tard avec le même lien.",
     "Un problème ? Répondez à l'e-mail que vous avez reçu : il arrivera à l'agence."
   ],
-  "_envoi_final": "E-mail envoyé à la personne qui a fait la demande (désignée par ses prénom et nom), avec les pièces en PDF. {{type}} vaut « Embauche » ou « Mise à jour » ; {{partie}} vaut « (1/2) », « (2/2) »… quand l'envoi est découpé, sinon rien. Ne jamais y reprendre de donnée tirée des pièces.",
+  "_envoi_final": "E-mail envoyé à la personne qui a fait la demande (désignée par ses prénom et nom) quand le dossier est complet. Il ne contient AUCUNE pièce (décision du 18/10/2026 : Brevo conservait les pièces jointes) : un bouton mène à la page de téléchargement. {{type}} vaut « Embauche » ou « Mise à jour ». Ne jamais y reprendre de donnée tirée des pièces.",
   "envoi_final": {
-    "sujet": "[{{type}}] Pièces reçues – {{civilite}} {{nom}} – demande du {{date_demande}}{{partie}}",
-    "texte": "Bonjour {{demandeur}},\n\n{{civilite}} {{nom}} a déposé les pièces que vous lui avez demandées le {{date_demande}}. Vous les trouverez en pièces jointes, en PDF :\n\n{{liste}}\n{{suite}}{{mentions}}\nCes pièces viennent d'être supprimées de l'outil de collecte : ce message en est le seul exemplaire. Classez-les dans le dossier du salarié.\n\nCet e-mail est envoyé automatiquement : pour toute question sur le dossier, contactez directement {{civilite}} {{nom}}.",
+    "bouton": "Télécharger les pièces",
+    "sujet": "[{{type}}] Pièces reçues – {{civilite}} {{nom}} – demande du {{date_demande}}",
+    "texte": "Bonjour {{demandeur}},\n\n{{civilite}} {{nom}} a déposé les pièces que vous lui avez demandées le {{date_demande}} :\n\n{{liste}}\n{{mentions}}\nPour les télécharger, connectez-vous à l'outil de collecte :\n{{lien}}\n\nPour protéger les données du salarié, les pièces ne sont jamais jointes aux e-mails. Elles sont supprimées de l'outil dès que vous confirmez les avoir enregistrées, 24 heures après leur premier téléchargement, et au plus tard le {{date_purge}}.\n\nCet e-mail est envoyé automatiquement : pour toute question sur le dossier, contactez directement {{civilite}} {{nom}}.",
     "a_verifier": "À VÉRIFIER : photo peu lisible, envoyée par le salarié malgré le contrôle de lisibilité.",
     "controle_seulement": "CONTRÔLE SEULEMENT : à consulter puis supprimer, ne pas archiver.",
     "mention_a_verifier": "Les pièces marquées « À VÉRIFIER » ont été photographiées dans de mauvaises conditions : vérifiez qu'elles sont lisibles et redemandez-les si besoin.\n",
-    "mention_controle_seulement": "Les pièces marquées « CONTRÔLE SEULEMENT » (casier judiciaire, permis de conduire) ne doivent pas être conservées : consultez-les, puis supprimez ce message et ses pièces jointes. La CNIL interdit d'en garder une copie.\n",
-    "suite": "Les autres pièces de ce dossier arrivent dans un autre e-mail {{autres}}.\n"
+    "mention_controle_seulement": "Les pièces marquées « CONTRÔLE SEULEMENT » (casier judiciaire, permis de conduire) ne doivent pas être conservées : consultez-les, puis supprimez le fichier téléchargé. La CNIL interdit d'en garder une copie.\n"
+  },
+  "_expiration": "E-mail envoyé à la personne qui a fait la demande quand le lien du salarié expire (15 jours après la demande) sans que les pièces aient été récupérées. Demande de Christel du 18/10/2026.",
+  "expiration": {
+    "sujet": "[{{type}}] Lien expiré – {{civilite}} {{nom}} – demande du {{date_demande}}",
+    "non_envoye": "Bonjour {{demandeur}},\n\nLe lien de dépôt envoyé le {{date_demande}} à {{civilite}} {{nom}} a expiré sans que le dossier soit envoyé. Les pièces éventuellement déposées ont été supprimées de l'outil.\n\nPour régulariser son dossier, faites une nouvelle demande. Demandez à {{civilite}} {{nom}} de bien surveiller la réception de l'e-mail (en regardant aussi dans les courriers indésirables) et de déposer ses pièces rapidement.\n\nCet e-mail est envoyé automatiquement par l'outil de collecte de pièces.",
+    "non_telecharge": "Bonjour {{demandeur}},\n\n{{civilite}} {{nom}} avait déposé toutes les pièces demandées le {{date_demande}}, mais elles n'ont pas été téléchargées dans le délai de 15 jours. Elles ont été supprimées de l'outil, comme prévu pour protéger les données du salarié.\n\nPour régulariser son dossier, faites une nouvelle demande. Demandez à {{civilite}} {{nom}} de bien surveiller la réception de l'e-mail (en regardant aussi dans les courriers indésirables) et de déposer ses pièces rapidement, puis téléchargez-les dès que vous êtes prévenu.\n\nCet e-mail est envoyé automatiquement par l'outil de collecte de pièces."
   },
   "_alerte": "E-mail envoyé à l'administratrice quand un envoi échoue ou que le quota d'e-mails du jour approche. Jamais de nom ni de donnée de salarié : seulement l'identifiant de la demande.",
   "alerte": {

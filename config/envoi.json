@@ -1,13 +1,13 @@
 {
-  "_aide": "Réglages de l'envoi final des pièces à la personne qui a fait la demande, par n8n. Modifiables sans toucher au code (redémarrer l'application ensuite).",
-  "seuil_decoupage_mo": 15,
-  "_seuil_decoupage_mo": "Au-delà de ce total de pièces jointes, l'envoi est découpé en plusieurs e-mails numérotés (1/2), (2/2). Brevo accepte 20 Mo par e-mail au plus.",
+  "_aide": "Réglages de l'e-mail annonçant un dossier complet (envoyé par n8n) et du compteur d'e-mails. Modifiables sans toucher au code (redémarrer l'application ensuite).",
   "quota_journalier": 150,
   "_quota_journalier": "Nombre d'e-mails par jour réservé à cette application sur le compte Brevo partagé (300 par jour en tout, avec Constats et PENA).",
   "alerte_quota_pourcent": 80,
   "_alerte_quota_pourcent": "L'administratrice est prévenue (une fois par jour) quand ce pourcentage du quota est atteint.",
-  "nouvelles_tentatives_minutes": [15, 60, 240],
-  "_nouvelles_tentatives_minutes": "Si l'envoi échoue, nouvelles tentatives après ces délais ; après la dernière, l'administratrice est prévenue.",
-  "silence_alerte_heures": 6,
-  "_silence_alerte_heures": "Si n8n n'a donné aucune nouvelle d'un envoi au bout de ce délai, l'administratrice est prévenue."
+  "nouvelles_tentatives_minutes": [
+    15,
+    60,
+    240
+  ],
+  "_nouvelles_tentatives_minutes": "Si l'envoi échoue, nouvelles tentatives après ces délais ; après la dernière, l'administratrice est prévenue."
 }

@@ -16,7 +16,6 @@ import { chargerCatalogue, chargerTextes, chargerControles, chargerReglagesEnvoi
 import { creerCompteur } from './compteur.js';
 import { creerEnvoi } from './envoi.js';
 import { creerPurge } from './purge.js';
-import { creerServeurInterne } from './interne.js';
 import { creerEmails } from './emails.js';
 import { creerDemandes, validerDemande, TYPES } from './demandes.js';
 import { creerUtilisateurs } from './utilisateurs.js';
@@ -48,6 +47,7 @@ const INFOS = {
   domaines: 'Les domaines autorisés sont enregistrés.',
   relance: 'L\'envoi est relancé. Vérifiez dans quelques minutes qu\'il a disparu de la liste des envois en échec.',
   relance_impossible: 'Cet envoi ne peut plus être relancé (déjà parti, ou purgé).',
+  pieces_effacees: 'Les pièces ont été supprimées de l\'outil.',
 };
 
 // Le jeton du salarié est dans le chemin (/d/<jeton>) : il est masqué dans le journal d'accès.
@@ -69,7 +69,7 @@ export function creerApp({ db, config, notificateur: notificateurBrut, catalogue
   stockage ??= creerStockage({ dataDir: config.dataDir, cle: config.cleFichiers });
   const depot = creerDepot({ db, catalogue, stockage, controles });
   const envoi = creerEnvoi({ db, config, emails, depot, notificateur, reglagesEnvoi });
-  const purge = creerPurge({ db, stockage });
+  const purge = creerPurge({ db, stockage, emails, notificateur });
   purge.purger();
   const entetes = enTetesSecurite(config);
   const agence = config.agence;
@@ -226,6 +226,40 @@ export function creerApp({ db, config, notificateur: notificateurBrut, catalogue
         }
         journaliser(db, 'invitation_envoyee', { utilisateurId: session.id, demandeId: demande.id });
         rediriger(res, '/?ok=invitation');
+      },
+    },
+
+    // ── Téléchargement des pièces par la personne qui a fait la demande (et elle seule) ──
+    // Les pièces ne partent jamais par e-mail (Brevo conservait les pièces jointes, constaté le 18/10/2026).
+    {
+      m: 'GET', c: /^\/demandes\/([A-Za-z0-9_-]{16})\/pieces$/, acces: 'session',
+      f: (req, res, { params: [id], session }) => {
+        const demande = envoi.demandeTelechargeable(id, session.id);
+        if (!demande) return html(res, 404, pages.pageMessage({ agence, session, titre: 'Page introuvable', message: 'Cette demande n\'existe pas, ou elle a été faite par une autre personne.' }));
+        html(res, 200, pages.pagePieces({ agence, session, demande, pieces: envoi.pieces(demande) }));
+      },
+    },
+    {
+      m: 'GET', c: /^\/demandes\/([A-Za-z0-9_-]{16})\/pieces\/(?:([A-Z][A-Z0-9_]{0,11})\.pdf|tout\.zip)$/, acces: 'session',
+      f: (req, res, { params: [id, abrev], session }) => {
+        const demande = envoi.demandeTelechargeable(id, session.id);
+        const fichier = demande && envoi.telecharger(demande, abrev || null);
+        if (!fichier) return html(res, 404, pages.pageMessage({ agence, session, titre: 'Pièce introuvable', message: 'Cette pièce n\'est plus disponible : elle a peut-être déjà été supprimée de l\'outil.' }));
+        res.writeHead(200, {
+          'Content-Type': fichier.type,
+          'Content-Disposition': `attachment; filename="${fichier.nom}"`,
+          'Content-Length': fichier.contenu.length,
+          'Cache-Control': 'no-store',
+        });
+        res.end(fichier.contenu);
+      },
+    },
+    {
+      m: 'POST', c: /^\/demandes\/([A-Za-z0-9_-]{16})\/pieces\/effacer$/, acces: 'session',
+      f: (req, res, { params: [id], session }) => {
+        const demande = envoi.demandeTelechargeable(id, session.id);
+        if (demande) envoi.terminer(demande.id, 'confirmation');
+        rediriger(res, '/?ok=pieces_effacees');
       },
     },
 
@@ -399,6 +433,5 @@ export function creerApp({ db, config, notificateur: notificateurBrut, catalogue
     traiter(req, res);
   });
   serveur.on('close', () => clearInterval(minuterie));
-  const serveurInterne = creerServeurInterne({ config, envoi });
-  return { serveur, serveurInterne, auth, demandes, depot, stockage, envoi, purge, notificateur };
+  return { serveur, auth, demandes, depot, stockage, envoi, purge, notificateur };
 }

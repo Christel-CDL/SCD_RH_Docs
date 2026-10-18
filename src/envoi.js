@@ -1,61 +1,45 @@
-// Envoi final du dossier à l'assistante, par n8n (étape 5).
+// Mise à disposition du dossier complet à la personne qui a fait la demande (étape 5, revue le 18/10/2026).
 //
-// 1. Le salarié clique sur « Envoyer mon dossier » : l'application prépare un « envoi » (plan des e-mails, découpé
-//    au-delà de 15 Mo de pièces jointes) puis prévient n8n par un webhook signé. Le message contient le texte des
-//    e-mails et, pour chaque pièce jointe, l'adresse INTERNE où n8n ira chercher le PDF : jamais les pièces elles-mêmes.
-// 2. n8n télécharge les PDF sur le port interne (non relié à Internet, protégé par un secret), envoie chaque e-mail,
-//    puis confirme chaque envoi réussi. Les PDF sont fabriqués à la demande, en mémoire, depuis les pages chiffrées.
-// 3. Quand tous les e-mails sont confirmés, tout est effacé : fichiers, pages, pièces, lien du salarié, son e-mail.
-//    Il ne reste que la civilité, le nom et le statut « transmise », jusqu'à la purge absolue à 15 jours.
-// En cas d'échec (n8n injoignable ou envoi refusé) : nouvelles tentatives espacées (config/envoi.json), puis alerte à
-// l'administratrice. Rien n'est supprimé avant un envoi réussi… sauf par la purge absolue à 15 jours (décision du 17/10/2026).
+// Les pièces ne partent JAMAIS par e-mail : à l'essai réel, Brevo conservait les pièces jointes dans ses journaux,
+// consultables depuis son tableau de bord. Désormais :
+// 1. le salarié clique sur « Envoyer mon dossier » : l'application envoie, par n8n, un e-mail SANS pièce jointe à la
+//    personne qui a fait la demande, avec un bouton vers la page de téléchargement (connexion obligatoire) ;
+// 2. elle télécharge les PDF (un par un ou en ZIP), fabriqués à la demande, en mémoire, depuis les pages chiffrées ;
+// 3. les pièces sont effacées (fichiers, pages, pièces, lien et e-mail du salarié) au premier des trois moments :
+//    elle confirme les avoir enregistrées ; 24 h après le premier téléchargement ; la purge absolue à 15 jours.
+// Si l'e-mail ne part pas (n8n ou Brevo en panne) : nouvelles tentatives espacées (config/envoi.json), puis alerte à
+// l'administratrice. La page de téléchargement reste accessible depuis « Mes demandes » pendant ce temps.
 import crypto from 'node:crypto';
 import { journaliser } from './db.js';
+import { creerZip } from './zip.js';
 
-// Plan des e-mails : pièces dans l'ordre, regroupées tant que le total reste sous le seuil.
-export function planifier(pdfs, seuilOctets) {
-  const plan = [];
-  let courant = [];
-  let taille = 0;
-  for (const { abrev, contenu } of pdfs) {
-    if (courant.length && taille + contenu.length > seuilOctets) {
-      plan.push(courant);
-      courant = [];
-      taille = 0;
-    }
-    courant.push(abrev);
-    taille += contenu.length;
-  }
-  if (courant.length) plan.push(courant);
-  return plan;
-}
+const VINGT_QUATRE_HEURES = 24 * 3600e3;
 
 export function creerEnvoi({ db, config, emails, depot, notificateur, reglagesEnvoi }) {
   const requetes = {
     parDemande: db.prepare('SELECT * FROM envois WHERE demande_id = ?'),
     parId: db.prepare('SELECT * FROM envois WHERE id = ?'),
-    inserer: db.prepare('INSERT INTO envois (id, demande_id, plan, prochaine_tentative, cree_le) VALUES (?, ?, ?, ?, ?)'),
+    inserer: db.prepare("INSERT INTO envois (id, demande_id, plan, prochaine_tentative, cree_le) VALUES (?, ?, '[]', ?, ?)"),
     notifie: db.prepare("UPDATE envois SET statut = 'notifie', notifie_le = ?, alerte_le = NULL WHERE id = ?"),
     reessayer: db.prepare("UPDATE envois SET statut = 'a_notifier', tentatives = ?, prochaine_tentative = ? WHERE id = ?"),
     abandonner: db.prepare("UPDATE envois SET statut = 'echec', tentatives = ?, alerte_le = ? WHERE id = ?"),
-    confirmes: db.prepare('UPDATE envois SET confirmes = ? WHERE id = ?'),
-    termine: db.prepare("UPDATE envois SET statut = 'termine' WHERE id = ?"),
-    alerte: db.prepare('UPDATE envois SET alerte_le = ? WHERE id = ?'),
+    termine: db.prepare("UPDATE envois SET statut = 'termine' WHERE demande_id = ?"),
+    telecharge: db.prepare('UPDATE envois SET telecharge_le = ? WHERE demande_id = ? AND telecharge_le IS NULL'),
     dus: db.prepare("SELECT * FROM envois WHERE statut = 'a_notifier' AND prochaine_tentative <= ?"),
-    silencieux: db.prepare("SELECT * FROM envois WHERE statut = 'notifie' AND alerte_le IS NULL AND notifie_le <= ?"),
+    aEffacer: db.prepare("SELECT demande_id FROM envois WHERE statut <> 'termine' AND telecharge_le IS NOT NULL AND telecharge_le <= ?"),
     // Dossiers complets sans envoi : l'application s'est arrêtée (redéploiement…) juste après le clic du salarié.
     orphelins: db.prepare("SELECT d.id FROM demandes d LEFT JOIN envois e ON e.demande_id = d.id WHERE d.statut = 'complete' AND e.id IS NULL AND d.complete_le <= ?"),
     enEchec: db.prepare("SELECT id, demande_id, tentatives, alerte_le FROM envois WHERE statut = 'echec' ORDER BY alerte_le DESC"),
     demande: db.prepare('SELECT * FROM demandes WHERE id = ?'),
-    assistante: db.prepare('SELECT email, nom FROM utilisateurs WHERE id = ?'),
+    demandeur: db.prepare('SELECT email, nom FROM utilisateurs WHERE id = ?'),
     supprimerPieces: db.prepare('DELETE FROM pieces WHERE demande_id = ?'),
     transmise: db.prepare(`
       UPDATE demandes SET statut = 'transmise', transmise_le = ?, jeton_empreinte = NULL, email_salarie = ''
       WHERE id = ? AND statut = 'complete'`),
   };
-  const enCours = new Set(); // envois en train d'être transmis à n8n : jamais deux fois en même temps
+  const enCours = new Set(); // envois en train d'être confiés à n8n : jamais deux fois en même temps
 
-  const urlInterne = (envoiId, suite) => `${config.internalUrl}/interne/envois/${envoiId}/${suite}`;
+  const lienTelechargement = (demandeId) => `${config.appUrl}/demandes/${demandeId}/pieces`;
 
   async function alerter(titre, detail, reference) {
     try {
@@ -66,24 +50,17 @@ export function creerEnvoi({ db, config, emails, depot, notificateur, reglagesEn
     }
   }
 
-  // Les e-mails de l'envoi qui n'ont pas encore été confirmés par n8n.
-  function messages(envoi) {
-    const demande = requetes.demande.get(envoi.demande_id);
-    const assistante = requetes.assistante.get(demande.utilisateur_id);
-    const description = new Map(depot.pdfs(demande, { avecContenu: false }).map((p) => [p.abrev, p]));
-    const plan = JSON.parse(envoi.plan);
-    const confirmes = JSON.parse(envoi.confirmes);
-    return plan.map((abrevs, i) => {
-      const pieces = abrevs.map((a) => description.get(a)).filter(Boolean);
-      return {
-        numero: i + 1,
-        ...emails.envoiFinal({ demande, assistante, pieces, numero: i + 1, total: plan.length }),
-        pieces_jointes: pieces.map((p) => ({ nom: p.nom, url: urlInterne(envoi.id, `pieces/${p.abrev}`) })),
-      };
-    }).filter((m) => !confirmes.includes(m.numero));
+  // E-mail « pièces prêtes » : texte, liste des pièces (libellés seulement), bouton vers la page de téléchargement.
+  function message(demande) {
+    return emails.envoiFinal({
+      demande,
+      assistante: requetes.demandeur.get(demande.utilisateur_id),
+      pieces: depot.pdfs(demande, { avecContenu: false }),
+      lien: lienTelechargement(demande.id),
+    });
   }
 
-  // Échec (n8n injoignable, ou envoi refusé signalé par n8n) : nouvelle tentative plus tard, ou abandon et alerte.
+  // Échec (n8n injoignable ou e-mail refusé) : nouvelle tentative plus tard, ou abandon et alerte.
   async function echouer(envoi, raison) {
     const tentatives = envoi.tentatives + 1;
     if (tentatives <= reglagesEnvoi.delaisMs.length) {
@@ -94,31 +71,25 @@ export function creerEnvoi({ db, config, emails, depot, notificateur, reglagesEn
     requetes.abandonner.run(tentatives, Date.now(), envoi.id);
     journaliser(db, 'envoi_en_echec', { demandeId: envoi.demande_id });
     await alerter(
-      'un dossier complet n\'a pas pu être envoyé',
-      `Après ${tentatives} tentatives, les pièces d'un dossier complet n'ont pas pu être envoyées à la personne qui les a demandées (${raison}). `
-      + 'Les pièces sont conservées, chiffrées, jusqu\'à la purge automatique à 15 jours après la demande. '
-      + 'Vérifiez n8n et le compte Brevo, puis relancez l\'envoi.',
+      'la personne qui a fait une demande n\'a pas pu être prévenue',
+      `Après ${tentatives} tentatives, l'e-mail annonçant qu'un dossier est complet n'a pas pu être envoyé (${raison}). `
+      + 'Les pièces restent téléchargeables depuis « Mes demandes », chiffrées, jusqu\'à la purge automatique à 15 jours après la demande. '
+      + 'Vérifiez n8n et le compte Brevo, puis relancez l\'envoi depuis l\'administration.',
       envoi.demande_id,
     );
   }
 
-  // Transmet l'envoi à n8n (première fois ou nouvelle tentative).
+  // Confie l'e-mail à n8n, qui répond une fois l'e-mail parti (ou en échec).
   async function transmettre(envoi) {
     if (enCours.has(envoi.id)) return;
     enCours.add(envoi.id);
     try {
-      const aEnvoyer = messages(envoi);
-      await notificateur.envoyer('envoi_dossier', {
-        envoi_id: envoi.id,
-        messages: aEnvoyer,
-        confirmation: urlInterne(envoi.id, 'confirmation'),
-        echec: urlInterne(envoi.id, 'echec'),
-      });
+      await notificateur.envoyer('email', message(requetes.demande.get(envoi.demande_id)));
       requetes.notifie.run(Date.now(), envoi.id);
-      journaliser(db, 'envoi_transmis_a_n8n', { demandeId: envoi.demande_id });
+      journaliser(db, 'pieces_annoncees', { demandeId: envoi.demande_id });
     } catch (erreur) {
-      console.error('Envoi non transmis à n8n :', erreur.message);
-      await echouer(envoi, 'n8n injoignable');
+      console.error('E-mail « pièces prêtes » non envoyé :', erreur.message);
+      await echouer(envoi, 'n8n ou Brevo indisponible');
     } finally {
       enCours.delete(envoi.id);
     }
@@ -130,82 +101,60 @@ export function creerEnvoi({ db, config, emails, depot, notificateur, reglagesEn
     if (!envoi) {
       const demande = requetes.demande.get(demandeId);
       if (!demande || demande.statut !== 'complete') return;
-      const plan = planifier(depot.pdfs(demande), reglagesEnvoi.seuilDecoupageOctets);
-      const id = crypto.randomBytes(24).toString('base64url');
-      requetes.inserer.run(id, demandeId, JSON.stringify(plan), Date.now(), Date.now());
-      envoi = requetes.parId.get(id);
+      requetes.inserer.run(crypto.randomBytes(24).toString('base64url'), demandeId, Date.now(), Date.now());
+      envoi = requetes.parDemande.get(demandeId);
     }
     if (envoi.statut === 'a_notifier') await transmettre(envoi);
   }
 
-  // Tout est parti : on efface les pièces et tout ce qui permettait d'y accéder.
-  function terminer(envoi) {
-    depot.supprimerFichiers(envoi.demande_id);
+  // ── Page de téléchargement (personne qui a fait la demande, connectée) ──
+
+  // La demande, si elle appartient à cet utilisateur et que ses pièces sont téléchargeables ; sinon null.
+  function demandeTelechargeable(demandeId, utilisateurId) {
+    const demande = requetes.demande.get(String(demandeId));
+    if (!demande || demande.utilisateur_id !== utilisateurId) return null;
+    return demande;
+  }
+
+  // Liste des pièces (sans contenu), pour la page.
+  const pieces = (demande) => (demande.statut === 'complete' ? depot.pdfs(demande, { avecContenu: false }) : []);
+
+  // Un PDF, ou tous en ZIP. Le premier téléchargement déclenche le compte à rebours de 24 h avant l'effacement.
+  function telecharger(demande, abrev = null) {
+    if (demande.statut !== 'complete') return null;
+    const pdfs = depot.pdfs(demande, { seulement: abrev });
+    if (!pdfs.length) return null;
+    requetes.telecharge.run(Date.now(), demande.id);
+    journaliser(db, abrev ? 'piece_telechargee' : 'pieces_telechargees_zip', { demandeId: demande.id });
+    if (abrev) return { nom: pdfs[0].nom, type: 'application/pdf', contenu: pdfs[0].contenu };
+    const base = pdfs[0].nom.replace(/-[A-Z0-9_]+\.pdf$/, '');
+    return { nom: `${base}-pieces.zip`, type: 'application/zip', contenu: creerZip(pdfs) };
+  }
+
+  // Effacement de tout ce qui permettait d'accéder aux pièces. origine : 'confirmation' ou 'automatique'.
+  function terminer(demandeId, origine) {
+    const demande = requetes.demande.get(demandeId);
+    if (!demande || demande.statut !== 'complete') return false;
+    depot.supprimerFichiers(demandeId);
     db.exec('BEGIN');
     try {
-      requetes.supprimerPieces.run(envoi.demande_id); // les pages suivent (ON DELETE CASCADE)
-      requetes.transmise.run(Date.now(), envoi.demande_id);
-      requetes.termine.run(envoi.id);
+      requetes.supprimerPieces.run(demandeId); // les pages suivent (ON DELETE CASCADE)
+      requetes.transmise.run(Date.now(), demandeId);
+      requetes.termine.run(demandeId);
       db.exec('COMMIT');
     } catch (erreur) {
       db.exec('ROLLBACK');
       throw erreur;
     }
-    journaliser(db, 'dossier_transmis_et_purge', { demandeId: envoi.demande_id });
+    journaliser(db, origine === 'confirmation' ? 'pieces_effacees_apres_confirmation' : 'pieces_effacees_24h_apres_telechargement', { demandeId });
+    return true;
   }
 
-  // ── Appels de n8n (port interne) ──
-
-  const envoiActif = (id) => {
-    const envoi = requetes.parId.get(String(id));
-    return envoi && envoi.statut === 'notifie' ? envoi : null;
-  };
-
-  // PDF d'une pièce, fabriqué en mémoire. null si l'envoi n'attend pas de pièces (déjà terminé, inconnu…).
-  function pdfPourN8n(envoiId, abrev) {
-    const envoi = envoiActif(envoiId);
-    if (!envoi || !JSON.parse(envoi.plan).flat().includes(abrev)) return null;
-    const [pdf] = depot.pdfs(requetes.demande.get(envoi.demande_id), { seulement: abrev });
-    return pdf || null;
-  }
-
-  // n8n confirme qu'un e-mail est parti. Renvoie { termine } ou null si l'envoi est inconnu ou déjà terminé.
-  function confirmer(envoiId, numero) {
-    const envoi = envoiActif(envoiId);
-    if (!envoi) return null;
-    const plan = JSON.parse(envoi.plan);
-    const n = Number(numero);
-    if (!Number.isInteger(n) || n < 1 || n > plan.length) return null;
-    const confirmes = [...new Set([...JSON.parse(envoi.confirmes), n])].sort((a, b) => a - b);
-    requetes.confirmes.run(JSON.stringify(confirmes), envoi.id);
-    if (confirmes.length === plan.length) {
-      terminer(envoi);
-      return { termine: true };
-    }
-    return { termine: false };
-  }
-
-  // n8n signale qu'un e-mail n'a pas pu partir (après ses propres essais).
-  async function signalerEchec(envoiId) {
-    const envoi = envoiActif(envoiId);
-    if (!envoi) return null;
-    await echouer(envoi, 'envoi refusé par le service d\'e-mail');
-    return { ok: true };
-  }
-
-  // Appelé régulièrement : nouvelles tentatives arrivées à échéance, envois restés sans nouvelles de n8n.
+  // Appelé chaque minute : envois oubliés, nouvelles tentatives, effacement 24 h après le premier téléchargement.
   async function tic() {
     for (const { id } of requetes.orphelins.all(Date.now() - 60e3)) await lancer(id);
     for (const envoi of requetes.dus.all(Date.now())) await transmettre(envoi);
-    for (const envoi of requetes.silencieux.all(Date.now() - reglagesEnvoi.silenceMs)) {
-      requetes.alerte.run(Date.now(), envoi.id);
-      await alerter(
-        'n8n ne donne pas de nouvelles d\'un envoi',
-        `n8n a reçu un dossier complet il y a plus de ${Math.round(reglagesEnvoi.silenceMs / 3600e3)} h mais n'a ni confirmé ni signalé d'échec. `
-        + 'Vérifiez le workflow « SCD – Événements de l\'application » dans n8n, et demandez à la personne qui a fait la demande si elle a reçu les pièces, avant de relancer quoi que ce soit (risque de doublon).',
-        envoi.demande_id,
-      );
-    }
+    for (const { demande_id: id } of requetes.aEffacer.all(Date.now() - VINGT_QUATRE_HEURES)) terminer(id, 'automatique');
   }
 
   const etat = (demandeId) => requetes.parDemande.get(demandeId) || null;
@@ -221,5 +170,5 @@ export function creerEnvoi({ db, config, emails, depot, notificateur, reglagesEn
     return true;
   }
 
-  return { lancer, tic, pdfPourN8n, confirmer, signalerEchec, etat, messages, enEchec, relancer };
+  return { lancer, tic, demandeTelechargeable, pieces, telecharger, terminer, etat, enEchec, relancer, message };
 }

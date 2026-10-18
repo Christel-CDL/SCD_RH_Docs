@@ -10,8 +10,8 @@ export const CIVILITES = ['M.', 'Mme'];
 export const STATUTS = {
   envoyee: 'Invitation envoyée',
   en_cours: 'En cours',
-  complete: 'Complète, envoi en cours',
-  transmise: 'Complète et transmise',
+  complete: 'Complète : pièces à télécharger',
+  transmise: 'Pièces récupérées',
   expiree: 'Expirée',
   annulee: 'Annulée',
 };
