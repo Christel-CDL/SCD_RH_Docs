@@ -473,6 +473,7 @@ export function pageGuide({ agence, session = null, appUrl, contact, minutesLien
     <h1>Demander des pièces à un salarié : mode d'emploi</h1>
     <p class="guide-adresse">Adresse de l'outil : <strong>${echapper(appUrl)}</strong></p>
     <div class="guide">
+      <div class="guide-colonne">
       <section>
         <h2>1. Se connecter</h2>
         <p>Saisissez votre adresse e-mail professionnelle, puis touchez « Recevoir mon lien de connexion ». Ouvrez l'e-mail reçu
@@ -500,6 +501,8 @@ export function pageGuide({ agence, session = null, appUrl, contact, minutesLien
           <li><strong>Pièces récupérées</strong> : vous les avez enregistrées, elles sont supprimées de l'outil.</li>
         </ul>
       </section>
+      </div>
+      <div class="guide-colonne">
       <section>
         <h2>5. Récupérer les pièces</h2>
         <p>Vous recevez un e-mail « Pièces reçues », <strong>sans pièce jointe</strong>. Touchez « Télécharger les pièces »,
@@ -518,8 +521,12 @@ export function pageGuide({ agence, session = null, appUrl, contact, minutesLien
           <li>Une question, un problème : ${echapper(contact.nom || 'l\'administratrice')}${contact.email ? `, <a href="mailto:${echapper(contact.email)}">${echapper(contact.email)}</a>` : ''}.</li>
         </ul>
       </section>
+      </div>
     </div>
-    <p class="guide-astuce">Astuce : sur téléphone, ajoutez l'outil à l'écran d'accueil (Safari : bouton Partager, puis « Sur l'écran
-      d'accueil » ; Chrome : menu ⋮, puis « Ajouter à l'écran d'accueil »).</p>`,
+    <section class="guide-astuce">
+      <h2>Astuce</h2>
+      <p>Sur téléphone, ajoutez l'outil à l'écran d'accueil (Safari : bouton Partager, puis « Sur l'écran
+      d'accueil » ; Chrome : menu ⋮, puis « Ajouter à l'écran d'accueil »).</p>
+    </section>`,
   });
 }
