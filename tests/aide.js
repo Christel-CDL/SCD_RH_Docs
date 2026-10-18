@@ -49,6 +49,9 @@ export async function demarrer({ envoiEnEchec = false } = {}) {
   });
 
   async function fermer() {
+    // Le navigateur des tests de bout en bout garde ses connexions ouvertes : sans les couper, close() attend
+    // indéfiniment (vu le 18/10/2026, après l'ajout du logo qui ouvre une connexion de plus).
+    serveur.closeAllConnections();
     await new Promise((ok) => serveur.close(ok));
     db.close();
     fs.rmSync(dataDir, { recursive: true, force: true });
