@@ -130,7 +130,7 @@ D'après l'aide de Brevo (octobre 2026), les **journaux et aperçus des e-mails 
 
 ## Passage à Outlook (phase 2, plus tard)
 
-Dans le docker-compose, `EMAIL_PROVIDER: outlook`. Puis, dans le workflow « SCD – Envoyer un e-mail », terminez le nœud « Outlook (phase 2, à finir) » :
+Dans le docker-compose, `EMAIL_PROVIDER: outlook`. Puis, dans le workflow « SCD – Envoyer un e-mail », remplacez le nœud « Outlook (phase 2, pas encore installé) » par un nœud « Microsoft Outlook » (envoi de message). n8n refuse de publier un nœud Outlook sans identifiant : il ne peut pas être préparé à l'avance.
 
 - identifiant OAuth de la boîte de l'agence (consentement de l'administrateur Microsoft 365 du réseau) ;
 - pièces jointes : propriétés binaires listées dans `pieces_binaires`.

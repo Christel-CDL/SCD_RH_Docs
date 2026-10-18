@@ -142,7 +142,7 @@ Le n8n provisoire et les données d'essai ont été supprimés ensuite.
 - Un navigateur sans script (cas très rare sur téléphone) ne peut envoyer que des photos JPEG, ou des PNG simples (sans transparence) ; pas de PDF. Sans script, l'orientation des photos JPEG n'est pas corrigée.
 - Le test de bout en bout HEIC a besoin d'une photo HEIC d'exemple, non versionnée (voir « Tests »).
 - Pendant les quelques secondes de l'envoi, les PDF passent par la base de n8n ; des octets peuvent subsister dans l'espace libéré de ce fichier jusqu'au prochain redémarrage de n8n (`DB_SQLITE_VACUUM_ON_STARTUP`).
-- Le nœud Outlook (phase 2) est préparé mais pas terminé : identifiant OAuth et pièces jointes à configurer lors de la bascule.
+- Phase 2 (Outlook) : le choix EMAIL_PROVIDER est en place, mais le nœud Outlook lui-même sera ajouté lors de la bascule (n8n refuse de publier un nœud Outlook sans identifiant).
 - Si n8n a bien envoyé l'e-mail mais que sa confirmation se perd, l'application ne renvoie rien : elle prévient l'administratrice au bout de 6 h. Mieux vaut un doublon évité qu'un dossier envoyé deux fois.
 
 ## Développement local
