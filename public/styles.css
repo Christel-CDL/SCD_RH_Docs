@@ -175,9 +175,9 @@ th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--
 }
 
 /* Guide d'une page (/aide) : deux colonnes sur grand écran, une seule page A4 à l'impression. */
-.guide section, .guide-astuce { background: #fff; border: 1px solid var(--bord); border-radius: .5rem; padding: .25rem 1rem .5rem; margin-bottom: .75rem; }
-.guide h2, .guide-astuce h2 { font-size: 1.15rem; color: var(--accent); margin: .6rem 0 .3rem; }
-.guide p, .guide ul, .guide-astuce p { margin: .3rem 0; }
+.guide section { background: #fff; border: 1px solid var(--bord); border-radius: .5rem; padding: .25rem 1rem .5rem; margin-bottom: .75rem; }
+.guide h2 { font-size: 1.15rem; color: var(--accent); margin: .6rem 0 .3rem; }
+.guide p, .guide ul { margin: .3rem 0; }
 .guide ul { padding-left: 1.2rem; }
 .guide-adresse { font-size: 1rem; color: var(--secondaire); }
 @media (min-width: 56rem) {
@@ -192,7 +192,7 @@ th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--
   main, main.large { max-width: none; padding: 2mm 0 0; }
   h1 { font-size: 17pt; margin: 2mm 0 2mm; }
   .guide { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; }
-  .guide section, .guide-astuce { break-inside: avoid; padding: 0 3mm 1mm; margin-bottom: 3mm; }
-  .guide h2, .guide-astuce h2 { font-size: 12.5pt; margin: 2.5mm 0 1mm; }
+  .guide section { break-inside: avoid; padding: 0 3mm 1mm; margin-bottom: 3mm; }
+  .guide h2 { font-size: 12.5pt; margin: 2.5mm 0 1mm; }
   .guide-adresse { font-size: 10.5pt; margin: 2mm 0; }
 }

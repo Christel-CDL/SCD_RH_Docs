@@ -521,12 +521,12 @@ export function pageGuide({ agence, session = null, appUrl, contact, minutesLien
           <li>Une question, un problème : ${echapper(contact.nom || 'l\'administratrice')}${contact.email ? `, <a href="mailto:${echapper(contact.email)}">${echapper(contact.email)}</a>` : ''}.</li>
         </ul>
       </section>
+      <section>
+        <h2>Astuce</h2>
+        <p>Sur téléphone, ajoutez l'outil à l'écran d'accueil (Safari : bouton Partager, puis « Sur l'écran
+        d'accueil » ; Chrome : menu ⋮, puis « Ajouter à l'écran d'accueil »).</p>
+      </section>
       </div>
-    </div>
-    <section class="guide-astuce">
-      <h2>Astuce</h2>
-      <p>Sur téléphone, ajoutez l'outil à l'écran d'accueil (Safari : bouton Partager, puis « Sur l'écran
-      d'accueil » ; Chrome : menu ⋮, puis « Ajouter à l'écran d'accueil »).</p>
-    </section>`,
+    </div>`,
   });
 }
