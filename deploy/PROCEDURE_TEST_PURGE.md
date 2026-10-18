@@ -1,42 +1,45 @@
 # Procédure de test de purge
 
-But : démontrer qu'après l'envoi d'un dossier à l'assistante, **il ne reste aucune trace des pièces** : ni sur le disque, ni dans la base, ni dans n8n, ni dans les journaux. Cahier des charges § 7, livrable 7.
+But : démontrer qu'une fois les pièces récupérées, **il ne reste aucune trace des pièces** : ni sur le disque, ni dans la base, ni dans n8n, ni chez Brevo, ni dans les journaux. Cahier des charges § 7, livrable 7.
 
 À faire à la mise en service, puis après chaque mise à jour importante. **Uniquement avec des documents fictifs** (feuille imprimée « DOCUMENT FICTIF », nom « ZZ TEST »).
 
+Rappel du fonctionnement (depuis le 18/10/2026) : les pièces ne partent **jamais** par e-mail. La personne qui a fait la demande reçoit un e-mail avec un bouton « Télécharger les pièces », les télécharge dans l'application, puis elles sont effacées : sur sa confirmation, sinon 24 h après le premier téléchargement, et au plus tard à J+15.
+
 ## Ce que les tests automatiques vérifient déjà
 
-À chaque `npm test` (fichier `tests/envoi.test.js`) :
+À chaque `npm test` (fichiers `tests/envoi.test.js` et `tests/relances.test.js`) :
 
 | Vérification | Test |
 |---|---|
-| Après la confirmation de n8n : plus aucun fichier dans `DATA_DIR/pieces`, plus aucune ligne `pieces` ni `pages` | « après confirmation de n8n, tout est effacé… » |
-| Lien du salarié inutilisable (réponse 410), e-mail du salarié effacé de la base | idem |
-| Plus rien à télécharger sur le port interne (404) | idem |
-| Journal d'activité sans nom ni e-mail de salarié | idem |
-| Envoi découpé : rien n'est effacé avant la confirmation du **dernier** e-mail | « envoi découpé… » |
-| Purge à 15 jours : demande, pièces, pages, envoi et fichiers effacés, même si l'envoi a échoué | « purge à 15 jours… » |
+| L'e-mail « pièces reçues » ne contient aucune pièce, ni l'e-mail du salarié | « dossier complet : un e-mail sans pièce… » |
+| Téléchargement réservé à la personne qui a fait la demande (même l'administratrice n'y a pas accès) | « téléchargement : réservé… » |
+| Après « J'ai enregistré les pièces » : plus aucun fichier dans `DATA_DIR/pieces`, plus aucune ligne `pieces` ni `pages`, lien du salarié inutilisable (410), e-mail du salarié effacé, journal sans nom | « J'ai enregistré les pièces… » |
+| Sans confirmation : effacement 24 h après le premier téléchargement | « sans confirmation… » |
+| Purge à 15 jours : tout est effacé, même si rien n'a été récupéré, et la personne qui a fait la demande est prévenue | « expiration sans dossier envoyé… », « expiration d'un dossier complet… » |
 | Fichiers orphelins de plus d'une heure effacés | « purge des fichiers orphelins… » |
-| n8n ne reçoit jamais les pièces dans son message, seulement des adresses internes | « dossier complet : n8n reçoit… » |
+| Lien du salarié gardé chiffré pour la relance, effacé dès l'envoi du dossier | « pas de relance si le dossier est envoyé… » |
+| Échec d'effacement d'un journal Brevo noté dans le journal d'activité | « journal Brevo non effacé… » |
 
 ## Essai réel sur le VPS
 
 ### 1. Déposer un dossier fictif
 
-1. Se connecter à https://pieces.expertform.fr, créer une demande « Mise à jour » : civilité M., nom **ZZ TEST Purge**, e-mail du salarié = votre propre adresse, pièces : RIB et Justificatif de domicile.
-2. Ouvrir le lien reçu, photographier une feuille « DOCUMENT FICTIF » pour chaque pièce, cliquer sur « Envoyer mon dossier ».
-3. Noter l'heure.
+1. Se connecter à https://pieces.expertform.fr, créer une demande « Mise à jour » : civilité M., nom **ZZ TEST Purge**, e-mail du salarié = votre propre adresse, pièces : Relevé d'identité bancaire et Justificatif de domicile.
+2. Ouvrir le lien reçu (bouton « Déposer mes documents »), photographier une feuille « DOCUMENT FICTIF » pour chaque pièce, cliquer sur « Envoyer mon dossier ».
 
-### 2. Vérifier la réception
+### 2. Recevoir et télécharger
 
-Dans la boîte de l'assistante (ici la vôtre) : un e-mail `[Mise à jour] Pièces reçues – M. ZZ TEST Purge – demande du …` avec `ZZ_TEST_PURGE-RIB.pdf` et `ZZ_TEST_PURGE-JDOM.pdf`.
+1. Dans votre boîte : un e-mail `[Mise à jour] Pièces reçues – M. ZZ TEST Purge – demande du …`, **sans pièce jointe**, avec un bouton « Télécharger les pièces ».
+2. Le bouton (ou « Mes demandes » → « Télécharger les pièces ») ouvre la page des pièces : télécharger le ZIP, vérifier qu'il contient `ZZ_TEST_PURGE-RIB.pdf` et `ZZ_TEST_PURGE-JDOM.pdf`, lisibles.
+3. Cliquer sur **« J'ai enregistré les pièces : les supprimer de l'outil »**.
 
 ### 3. Vérifier l'application
 
-- Écran **Mes demandes** : « Complète et transmise », « Pièces envoyées par e-mail le …, puis supprimées de l'outil ».
-- Rouvrir le lien du salarié : « Ce lien n'est plus valable ».
-- **Administration → Journal d'activité** : « Pièces reçues par l'assistante, puis supprimées de l'outil ». Aucune ligne ne contient le nom « ZZ TEST » ni d'adresse de salarié.
-- Journal du conteneur `scd-pieces-app` (hPanel → Docker Manager → scd-pieces → Logs) : les adresses apparaissent masquées (`/d/***`, `/interne/envois/***/pieces/***`). Aucun nom, aucun contenu.
+- Écran **Mes demandes** : « Pièces récupérées, puis supprimées de l'outil le … ».
+- Rouvrir le lien du salarié : « Ce lien n'est plus valable ». Rouvrir la page des pièces : « supprimées de l'outil ».
+- **Administration → Journal d'activité** : « Pièces enregistrées par la personne qui les a demandées, puis supprimées de l'outil ». Aucune ligne ne contient le nom « ZZ TEST » ni d'adresse de salarié.
+- Journal du conteneur `scd-pieces-app` (hPanel → Docker Manager → scd-pieces → Journaux) : les adresses de dépôt apparaissent masquées (`/d/***`). Aucun nom, aucun contenu.
 - Disque : hPanel → Docker Manager → scd-pieces → conteneur scd-pieces-app → Terminal, puis :
 
   ```
@@ -47,22 +50,15 @@ Dans la boîte de l'assistante (ici la vôtre) : un e-mail `[Mise à jour] Pièc
 
 ### 4. Vérifier n8n
 
-- https://n8n-pieces.srv1102696.hstgr.cloud → **Executions** : la liste doit être **vide** (aucune exécution n'est sauvegardée, ni réussie ni en échec).
-- Terminal du conteneur `scd-pieces-n8n` :
-
-  ```
-  ls -la /home/node/.n8n
-  ```
-
-  Il ne doit y avoir ni dossier `binaryData` ni dossier `storage` contenant des fichiers PDF.
+- https://n8n-pieces.srv1102696.hstgr.cloud → **Executions** : la liste doit être **vide**.
 
 ### 5. Vérifier Brevo
 
-Brevo → **Transactional** → **Logs** : l'e-mail apparaît (date, destinataire, objet). C'est le risque résiduel décrit dans `deploy/GUIDE_DEPLOIEMENT.md` (« Ce que Brevo conserve »). La règle de conservation choisie doit s'y appliquer.
+Brevo → **Transactionnel** → **Journaux** : les e-mails de l'essai (invitation, pièces reçues) doivent **disparaître** (effacement automatique, traité par Brevo sous 72 h au plus). Les rouvrir avant leur disparition ne doit jamais montrer de pièce jointe. Si un journal reste au-delà de 72 h, le journal d'activité de l'application indique « Journal Brevo d'un e-mail non effacé » : vérifier l'identifiant `Brevo API SCD` dans n8n.
 
-### 6. Purge à 15 jours
+### 6. Purge à 15 jours et relance
 
-Pas besoin d'attendre 15 jours : les tests automatiques couvrent ce cas. Sur le VPS, une demande laissée sans réponse disparaît de « Mes demandes » 15 jours après sa création, et le journal montre « Demande expirée effacée (purge à 15 jours) ».
+Pas besoin d'attendre : les tests automatiques couvrent ces cas. Sur le VPS, une demande laissée sans réponse reçoit une relance à J+7, puis disparaît 15 jours après sa création ; la personne qui l'a faite reçoit alors un e-mail « Lien expiré », et le journal montre « Demande expirée effacée (purge à 15 jours) ».
 
 ### Résultat attendu
 

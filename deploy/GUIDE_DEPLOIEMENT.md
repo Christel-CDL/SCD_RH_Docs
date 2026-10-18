@@ -2,27 +2,24 @@
 
 Pour Christel. Chaque étape dit **qui fait quoi**. Claude ne peut ni pousser sur GitHub, ni écrire sur le VPS, ni modifier les DNS : ces gestes sont les vôtres. Après chaque étape, une vérification permet de s'assurer que tout va bien.
 
-Ce premier déploiement sert à **l'essai réel de l'étape 5**, avec des **documents fictifs uniquement**. Aucune vraie demande ne doit être créée avant la validation finale.
+Installé sur le VPS le 18/10/2026. Les essais se font avec des **documents fictifs uniquement** tant que la mise en service n'est pas validée.
 
-## Ce qui va tourner sur le VPS
+## Ce qui tourne sur le VPS
 
 Un projet Docker **séparé**, `scd-pieces`, avec deux conteneurs :
 
 | Conteneur | Rôle | Adresse |
 |---|---|---|
 | `scd-pieces-app` | l'application | https://pieces.expertform.fr |
-| `scd-pieces-n8n` | le n8n **dédié** : il envoie les e-mails par Brevo | https://n8n-pieces.srv1102696.hstgr.cloud (éditeur seulement) |
+| `scd-pieces-n8n` | le n8n **dédié** : il envoie les e-mails par Brevo, puis efface leur journal chez Brevo | https://n8n-pieces.srv1102696.hstgr.cloud (éditeur seulement) |
 
-Les deux conteneurs se parlent par un réseau privé (`scd-interne`). Depuis Internet, on ne peut joindre :
-
-- ni le port interne de l'application, où n8n télécharge les PDF ;
-- ni les webhooks de n8n.
+L'application prévient n8n par un réseau privé (`scd-interne`). Les webhooks de n8n ne sont pas joignables depuis Internet. **Aucune pièce ne passe par n8n ni par Brevo** : la personne qui a fait la demande télécharge les pièces dans l'application.
 
 Les projets `root` (Traefik, n8n général, Suivi PENA) et `app-constats` ne sont pas modifiés.
 
-## 1. Préparer les secrets (vous, sur votre PC)
+## 1. Les secrets (vous, sur votre PC)
 
-Il faut **quatre** secrets différents. Générez chacun avec cette commande PowerShell, une fois par secret :
+Il faut **trois** secrets différents. Générez chacun avec cette commande PowerShell, une fois par secret :
 
 ```powershell
 $b = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); -join ($b | ForEach-Object { $_.ToString('x2') })
@@ -30,12 +27,11 @@ $b = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create
 
 | Variable | À quoi elle sert | Si on la perd |
 |---|---|---|
-| `FILE_ENCRYPTION_KEY` | chiffre les pièces déposées | les dossiers en cours deviennent illisibles |
+| `FILE_ENCRYPTION_KEY` | chiffre les pièces déposées et les liens des salariés | les dossiers en cours deviennent illisibles |
 | `N8N_WEBHOOK_SECRET` | signe les messages de l'application vers n8n | on en génère un nouveau, à mettre aux deux endroits |
-| `INTERNAL_API_SECRET` | protège le port interne où n8n télécharge les PDF | idem |
-| `N8N_ENCRYPTION_KEY` | chiffre, dans n8n, l'identifiant Brevo | il faut ressaisir l'identifiant Brevo dans n8n |
+| `N8N_ENCRYPTION_KEY` | chiffre, dans n8n, les identifiants Brevo | il faut ressaisir les identifiants Brevo dans n8n |
 
-Rangez-les dans votre gestionnaire de mots de passe. Ne les envoyez jamais par e-mail et ne les mettez jamais dans Git.
+Rangez-les dans votre gestionnaire de mots de passe. Ne les envoyez jamais par e-mail et ne les mettez jamais dans Git. (Un quatrième secret, `INTERNAL_API_SECRET`, servait jusqu'au 18/10/2026 : il est devenu inutile et peut être retiré de hPanel.)
 
 ## 2. Publier le code (vous)
 
@@ -47,105 +43,93 @@ cd C:\Users\Christel\Documents\SCD_RH_Docs
 git push
 ```
 
-Attendez la **coche verte** sur GitHub → onglet **Actions** (tests puis construction de l'image).
+Attendez la **coche verte** sur GitHub → onglet **Actions** (tests puis construction de l'image). Le paquet `scd-rh-docs` est déjà public.
 
-La première fois seulement : GitHub → votre profil → **Packages** → `scd-rh-docs` → **Package settings** → **Change visibility** → **Public**. L'image ne contient ni donnée ni secret. Sans ce réglage, le VPS ne peut pas la télécharger et affiche « pull access denied ».
+## 3. Le DNS (fait le 18/10/2026)
 
-**Vérification :** la page du paquet indique « Public ».
+`pieces.expertform.fr` pointe vers le VPS (`72.61.102.144` et `2a02:4780:28:4213::1`). Le domaine d'envoi `expertform.fr` a un SPF unique (`v=spf1 include:mx.ovh.com include:spf.protection.outlook.com include:spf.brevo.com -all`), la signature DKIM de Brevo et un DMARC. **Ne jamais ajouter un second enregistrement SPF** : il faut modifier l'existant.
 
-## 3. Vérifier le DNS (vous, ou demandez-moi)
+## 4. Le projet dans hPanel (vous)
 
-`pieces.expertform.fr` doit pointer vers l'adresse du VPS `72.61.102.144` (saisi chez OVH à l'étape 0). L'adresse `n8n-pieces.srv1102696.hstgr.cloud` fonctionne déjà, sans rien faire.
+1. hPanel → VPS → **Docker Manager** → projet **`scd-pieces`** (jamais `root`).
+2. Contenu : le fichier `deploy/docker-compose.scd-pieces.yml`.
+3. Variables d'environnement : `ADMIN_EMAIL`, `ADMIN_NOM` et les trois secrets de l'étape 1.
+4. **Déployer**.
 
-```powershell
-Resolve-DnsName pieces.expertform.fr
-```
+**Vérification :** https://pieces.expertform.fr/sante affiche `ok` ; le journal du conteneur `scd-pieces-app` ne contient pas « DÉMARRAGE IMPOSSIBLE » (sinon la ligne suivante dit quelle variable manque).
 
-**Vérification :** la réponse contient `72.61.102.144`.
+## 5. Votre compte dans n8n (fait le 18/10/2026)
 
-## 4. Créer le projet dans hPanel (vous)
+Compte propriétaire avec votre adresse et un mot de passe propre à ce n8n. Activez la double vérification (avatar → Settings → Personal).
 
-1. hPanel → VPS → **Docker Manager** → **Nouveau projet** (Compose).
-2. Nom du projet : **`scd-pieces`**. Ce nom est important : jamais `root`.
-3. Collez le contenu du fichier `deploy/docker-compose.scd-pieces.yml`.
-4. Dans les **variables d'environnement** du projet, saisissez :
-   - `ADMIN_EMAIL` : votre adresse ;
-   - `ADMIN_NOM` : votre prénom et votre nom ;
-   - les quatre secrets de l'étape 1.
-5. **Déployer**.
+## 6. Les deux identifiants Brevo dans n8n (vous)
 
-**Vérification :**
+**a) Envoi des e-mails : clé SMTP** (fait le 18/10/2026)
 
-- https://pieces.expertform.fr/sante affiche `ok`.
-- Dans les journaux du conteneur `scd-pieces-app`, on lit « Port interne pour n8n : 0.0.0.0:3001 ».
-- Le message « DÉMARRAGE IMPOSSIBLE » n'apparaît pas. S'il apparaît, la ligne suivante dit quelle variable manque.
+- Brevo → **SMTP & API** → onglet **SMTP** → clé SMTP dédiée.
+- n8n → **Credentials** → **SMTP**, nommé exactement `Brevo SMTP SCD` : User = identifiant SMTP Brevo (`…@smtp-brevo.com`), Password = la clé, Host `smtp-relay.brevo.com`, Port `587`, SSL/TLS désactivé.
 
-## 5. Ouvrir n8n et créer votre compte (vous)
+**b) Effacement des journaux : clé API**
 
-Ouvrez https://n8n-pieces.srv1102696.hstgr.cloud et créez le compte propriétaire avec **votre** adresse et un mot de passe fort. C'est un n8n neuf, distinct du n8n général.
+Brevo garde dans ses journaux le contenu des e-mails (liens personnels compris). n8n efface le journal de chaque e-mail juste après l'envoi ; il lui faut pour cela une clé **API** (différente de la clé SMTP).
 
-## 6. Clé SMTP Brevo et identifiant dans n8n (vous)
+1. Brevo → **SMTP & API** → onglet **Clés API** → **Générer une nouvelle clé API**, nommée « n8n SCD pièces – effacement des journaux ». Copiez-la tout de suite et rangez-la dans votre gestionnaire.
+2. n8n → **Credentials** → **Create credential** → cherchez **Header Auth** :
+   - nom de l'identifiant (en haut) : `Brevo API SCD`, exactement ;
+   - **Name** : `api-key` ;
+   - **Value** : la clé API.
+3. **Save**.
 
-1. Brevo → **SMTP & API** → onglet **SMTP** → **Générer une nouvelle clé SMTP**, nommée « n8n SCD pièces ». Il faut une clé **SMTP**, pas une clé API.
-2. Dans n8n → **Credentials** → **Add credential** → **SMTP** :
-   - **Name** : `Brevo SMTP SCD` (exactement ce nom) ;
-   - **User** : l'identifiant SMTP affiché par Brevo (il ressemble à `xxxx@smtp-brevo.com`) ;
-   - **Password** : la clé générée ;
-   - **Host** : `smtp-relay.brevo.com`, **Port** : `587`, **SSL/TLS** : désactivé (le chiffrement se fait par STARTTLS).
-3. Brevo → **Sécurité** → **Adresses IP autorisées** : vérifiez que `72.61.102.144` y figure. Elle y est sans doute déjà pour Constats ; sinon Brevo bloque les envois.
+Brevo → **Sécurité** → **Adresses IP autorisées** : `72.61.102.144` doit y figurer, sinon Brevo refuse les envois et les effacements.
 
-## 7. Importer les workflows (vous)
+## 7. Les workflows dans n8n (vous)
 
-Dans n8n, **dans cet ordre** :
+Les deux workflows sont déjà installés. Pour les **mettre à jour** sans casser le lien entre eux, on remplace leur contenu au lieu de les réimporter à côté :
 
-1. **Import from File** → `deploy/n8n/SCD_envoyer_un_email.json`. Ouvrez le nœud « Brevo (SMTP) » et vérifiez que l'identifiant `Brevo SMTP SCD` est choisi. **Enregistrez**, puis **publiez** (bouton « Publish » en haut à droite).
-2. **Import from File** → `deploy/n8n/SCD_evenements_application.json`. Ouvrez les nœuds « Envoyer l'e-mail simple » et « Envoyer l'e-mail du dossier », puis choisissez dans la liste « SCD – Envoyer un e-mail ». **Enregistrez**, puis **publiez**.
+1. Ouvrez **« SCD – Envoyer un e-mail »** → cliquez dans le dessin → **Ctrl+A** puis **Suppr** → menu **…** → **Import from File…** → `deploy/n8n/SCD_envoyer_un_email.json`.
+   - Nœud **« Brevo (SMTP) »** : identifiant `Brevo SMTP SCD`.
+   - Nœud **« Effacer le journal Brevo »** : identifiant `Brevo API SCD`.
+   - **Save**, puis **Publish** (nom de version, par exemple `v3 – effacement des journaux`).
+2. Ouvrez **« SCD – Événements de l'application »** → même méthode → `deploy/n8n/SCD_evenements_application.json`.
+   - Nœud **« Envoyer l'e-mail »** : choisissez « SCD – Envoyer un e-mail » dans la liste.
+   - **Save**, puis **Publish**.
 
-Les **deux** workflows doivent être publiés. Si seul le second l'est, chaque e-mail échoue aussitôt. Constaté le 17/10/2026 sur n8n 2.43.5 : un sous-workflow non publié ne s'exécute pas.
+Les **deux** workflows doivent être publiés : un sous-workflow non publié ne s'exécute pas (constaté le 17/10/2026). Pour une première installation, utilisez simplement **Create workflow** → **Import from File** pour chacun.
 
-**Vérification :** les deux workflows sont marqués « Published ».
+**Vérification :** les deux workflows sont marqués « Published ». Demandez un lien de connexion : il arrive, et quelques minutes plus tard son journal n'apparaît plus dans Brevo (ou au plus tard sous 72 h, selon Brevo). Si l'effacement échoue, le journal d'activité de l'application affiche « Journal Brevo d'un e-mail non effacé ».
 
 ## 8. Essai complet (vous, avec des documents fictifs)
 
-Suivez `deploy/PROCEDURE_TEST_PURGE.md`, sections 1 à 5. Le premier e-mail qui doit arriver est votre lien de connexion à https://pieces.expertform.fr : il prouve que l'application, n8n et Brevo se parlent.
-
-Envoyez-moi une capture d'écran de chaque vérification : je ne considère rien comme fait sans l'avoir vu.
+Suivez `deploy/PROCEDURE_TEST_PURGE.md`. Envoyez-moi une capture d'écran de chaque vérification : je ne considère rien comme fait sans l'avoir vu.
 
 ## Ce que n8n conserve
 
-Validé le 17/10/2026 sur un n8n 2.43.5 provisoire, avec un faux serveur d'e-mail et des données fictives :
+Validé le 17/10/2026 sur un n8n 2.43.5 provisoire :
 
-- **Exécutions :** n8n écrit chaque exécution dans sa base **dès son début**, données comprises. Pour l'e-mail final, ces données incluent les PDF. Avec les réglages du docker-compose, il l'**efface dès la fin** de l'exécution : aucune ne reste visible ni stockée.
-- **Le réglage `EXECUTIONS_DATA_PRUNE: "false"` est indispensable.** Avec « true », n8n ne fait que **marquer** l'exécution pour une suppression ultérieure, et les PDF restent dans sa base en attendant.
-- **Risque résiduel :** pendant les quelques secondes de l'envoi, les PDF sont dans la base de n8n. Après effacement, des octets peuvent subsister dans l'espace libéré du fichier de base, jusqu'au prochain redémarrage de n8n, qui réécrit la base (`DB_SQLITE_VACUUM_ON_STARTUP`).
-- **Version future de n8n :** n8n annonce la disparition du mode « pièces jointes en mémoire » (`N8N_DEFAULT_BINARY_DATA_MODE: default`). Avant toute mise à jour de l'image n8n, il faudra revérifier ce point avec la procédure de test de purge.
+- n8n écrit chaque exécution dans sa base dès son début, puis l'**efface dès la fin** avec les réglages du docker-compose.
+- **`EXECUTIONS_DATA_PRUNE: "false"` est indispensable** : avec « true », n8n ne fait que marquer l'exécution pour une suppression ultérieure.
+- Depuis le 18/10/2026, les exécutions ne contiennent plus aucune pièce : seulement le texte des e-mails (civilité et nom du salarié, liens personnels), le temps de l'envoi.
 
-## Ce que Brevo conserve (à régler)
+## Ce que Brevo conserve
 
-D'après l'aide de Brevo (octobre 2026), les **journaux et aperçus des e-mails transactionnels sont conservés sans limite de durée par défaut**. Une durée plus courte se règle dans **Paramètres → E-mails transactionnels → Règles de conservation**. La suppression est rétroactive et prend jusqu'à 72 h.
+D'après l'aide de Brevo (octobre 2026), les **journaux et aperçus des e-mails sont conservés sans limite de durée par défaut**. L'essai du 18/10/2026 l'a confirmé : la **pièce jointe** d'un e-mail se rouvrait depuis le journal. D'où les deux mesures prises :
 
-- **Ce qui est concerné ici** : l'aperçu de l'e-mail final. Il contient l'objet, le texte (civilité et nom du salarié, liste des pièces) et sans doute le nom des pièces jointes. L'aide de Brevo ne dit pas si le **contenu** des pièces jointes est conservé dans l'aperçu. À vérifier sur le premier e-mail d'essai : ouvrez son aperçu dans les journaux Brevo.
-- **Recommandation** : la règle de conservation la plus courte proposée. Comme le compte est **partagé** avec Constats et PENA, cette règle s'appliquera aussi à leurs e-mails. À décider en connaissance de cause.
-- **Risque résiduel** : même avec une règle courte, Brevo garde ces informations quelque temps. Le nom du salarié et la liste des pièces y figurent, jamais le contenu des pièces côté application. À mentionner dans le registre des traitements, avec Brevo comme sous-traitant ultérieur.
+1. **plus aucune pièce par e-mail** (téléchargement dans l'application) ;
+2. **effacement automatique** du journal de chaque e-mail juste après l'envoi (étape 6 b). Brevo traite l'effacement sous 72 h au plus.
+
+En filet de sécurité, réglez aussi la durée de conservation la plus courte : **Paramètres → E-mails transactionnels → Règles de conservation**. Ce réglage s'applique à tout le compte, donc aussi à Constats et PENA.
+
+**Risque résiduel**, à mentionner dans le registre des traitements (Brevo, sous-traitant ultérieur) : pendant au plus 72 h, Brevo garde l'e-mail (nom du salarié, liste des pièces, lien personnel), jamais le contenu des pièces.
 
 ## Passage à Outlook (phase 2, plus tard)
 
-Dans le docker-compose, `EMAIL_PROVIDER: outlook`. Puis, dans le workflow « SCD – Envoyer un e-mail », remplacez le nœud « Outlook (phase 2, pas encore installé) » par un nœud « Microsoft Outlook » (envoi de message). n8n refuse de publier un nœud Outlook sans identifiant : il ne peut pas être préparé à l'avance.
+Dans le docker-compose, `EMAIL_PROVIDER: outlook`. Puis, dans le workflow « SCD – Envoyer un e-mail », remplacez le nœud « Outlook (phase 2, pas encore installé) » par un nœud « Microsoft Outlook » (envoi de message), relié à la boîte de l'agence : identifiant OAuth, avec le consentement de l'administrateur Microsoft 365 du réseau. n8n refuse de publier un nœud Outlook sans identifiant : il ne peut pas être préparé à l'avance. L'effacement des journaux Brevo devient alors inutile pour ces e-mails. Vérifiez aussi l'adresse et le nom d'expéditeur. Rien d'autre ne change dans l'application.
 
-- identifiant OAuth de la boîte de l'agence (consentement de l'administrateur Microsoft 365 du réseau) ;
-- pièces jointes : propriétés binaires listées dans `pieces_binaires`.
-
-Vérifiez aussi :
-
-- la limite de taille des pièces jointes d'Exchange Online, et réglez `seuil_decoupage_mo` dans `config/envoi.json` en conséquence ;
-- l'adresse et le nom d'expéditeur.
-
-Rien d'autre ne change dans l'application.
-
-## Mise à jour de l'application (plus tard)
+## Mise à jour de l'application
 
 1. Je committe ; vous faites `git push`.
 2. Vous attendez la coche verte.
 3. Dans hPanel → projet `scd-pieces` → **Déployer** (l'image `latest` est retéléchargée).
+4. Si je vous l'indique : mise à jour des workflows n8n (étape 7) ou du docker-compose.
 
-Les volumes `scd-pieces-data` et `scd-pieces-n8n` ne doivent **jamais** être supprimés : ils contiennent la base, les pièces en cours (chiffrées), les workflows et l'identifiant Brevo.
+Les volumes `scd-pieces-data` et `scd-pieces-n8n` ne doivent **jamais** être supprimés : ils contiennent la base, les pièces en cours (chiffrées), les workflows et les identifiants Brevo.

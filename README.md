@@ -10,8 +10,8 @@ Cahier des charges : `OneDrive - CDL EXPERTISES\DEV-CONSULT\SCD\SCD Services\PRO
 | 2 | Formulaire de demande, invitation, administration de la liste autorisée | **fait** |
 | 3 | Dépôt avec brouillon (pièces chiffrées AES-256-GCM) | **fait** |
 | 4 | Contrôle de lisibilité, génération des PDF | **fait** |
-| 5 | Workflow n8n d'envoi final, purge vérifiée | **fait** (déploiement sur le VPS à faire) |
-| 6 | Relances, expiration, suivi | à faire |
+| 5 | Envoi par n8n, téléchargement des pièces, purge vérifiée | **fait**, en ligne sur le VPS |
+| 6 | Relances, expiration, suivi | en partie : relance du salarié à J+7 et e-mail d'expiration faits (demandes du 18/10/2026) ; reste le suivi (« Relancer », « Annuler », réglages depuis l'administration) |
 
 ## Choix techniques
 
@@ -19,20 +19,20 @@ Cahier des charges : `OneDrive - CDL EXPERTISES\DEV-CONSULT\SCD\SCD Services\PRO
 - **Deux bibliothèques servies par l'application au téléphone du salarié** (jamais par un site tiers), copiées telles quelles depuis npm dans `public/vendor/`, versions figées, empreintes vérifiées par un test (`public/vendor/EMPREINTES.json`) : **pdf.js** 6.3.289 (Mozilla, Apache-2.0) pour transformer les PDF en images, et **libheif** 1.23.2 (LGPL-3.0) pour lire les photos HEIC d'iPhone. Le téléphone ne les télécharge que si le salarié envoie un PDF ou une photo HEIC.
 - **Pages rendues côté serveur.** Seule la page de dépôt du salarié charge un script (`public/depot.js`, servi par l'application elle-même, sans script en ligne ni domaine tiers). Sans ce script, l'envoi classique des formulaires fonctionne quand même.
 - **Tous les e-mails passent par n8n** (instance dédiée), via des webhooks signés HMAC-SHA256 (`src/notifications.js`). L'application n'envoie jamais d'e-mail elle-même : elle rédige chaque message, n8n se contente de l'envoyer par Brevo (phase 1), puis par Outlook (phase 2).
-- **Envoi final du dossier** (`src/envoi.js`) : n8n ne reçoit jamais les pièces dans son message, seulement le texte de l'e-mail et l'adresse **interne** de chaque PDF. Il les télécharge sur un second port de l'application (`src/interne.js`), qui n'est relié à aucun nom de domaine et exige son propre secret. Les PDF y sont fabriqués à la demande, en mémoire.
+- **Les pièces ne partent jamais par e-mail** (`src/envoi.js`). À l'essai réel du 18/10/2026, Brevo conservait les pièces jointes dans ses journaux. Désormais, l'e-mail « pièces reçues » contient un bouton « Télécharger les pièces » : la personne qui a fait la demande se connecte et télécharge les PDF (un par un, ou en ZIP écrit par l'application, `src/zip.js`), fabriqués à la demande, en mémoire. n8n ne manipule plus aucune pièce, et il efface le journal Brevo de chaque e-mail juste après l'envoi.
 - **Projet distinct de Constats et de PENA :** son propre dépôt, son image, sa base, ses secrets et son projet Docker. Seul le Traefik du VPS est partagé.
 
 ## Ce qui se modifie sans toucher au code
 
 - `config/pieces.json` : liste des pièces (libellé, pages, « contrôle seulement », consigne au salarié) et modèles « embauche » / « mise à jour ». Une erreur de saisie bloque le démarrage avec un message précis.
-- `config/textes.json` : textes des e-mails (connexion, invitations), nom d'expéditeur, mention RGPD, aide et messages de lisibilité affichés au salarié. Les mots entre `{{ }}` sont remplacés automatiquement.
-- `config/envoi.json` : seuil de découpage des envois (15 Mo), part quotidienne d'e-mails sur le compte Brevo partagé (150) et seuil d'alerte (80 %), délais des nouvelles tentatives (15 min, 1 h, 4 h), délai avant l'alerte « n8n sans nouvelles » (6 h).
+- `config/textes.json` : textes des e-mails (connexion, invitation, relance, pièces reçues, expiration, alertes) et des boutons, nom d'expéditeur, mention RGPD, aide et messages de lisibilité affichés au salarié. Les mots entre `{{ }}` sont remplacés automatiquement.
+- `config/envoi.json` : délai de la relance automatique du salarié (7 jours, une seule relance, 0 pour aucune), part quotidienne d'e-mails sur le compte Brevo partagé (150) et seuil d'alerte (80 %), délais des nouvelles tentatives d'envoi (15 min, 1 h, 4 h).
 - `config/controles.json` : seuils du contrôle de lisibilité (résolution, netteté, luminosité, reflets, nombre d'échecs avant « envoyer quand même »), réencodage des photos, taille visée et plafond des PDF. Une valeur hors limites bloque le démarrage avec un message précis.
 - Écran **Administration** : adresses autorisées (ajout, désactivation, suppression avec confirmation), domaines autorisés, journal d'activité, nombre d'e-mails envoyés aujourd'hui, envois en échec avec un bouton « Relancer l'envoi ».
 
 Après une modification d'un fichier `config/`, redémarrer l'application (en production : nouvelle image, puis Deploy).
 
-Les écrans de réglage des durées et des textes depuis l'administration arriveront avec les relances (étape 6).
+Les écrans de réglage des durées et des textes depuis l'administration arriveront avec la fin de l'étape 6.
 
 ## Sécurité déjà en place (étapes 1 à 5)
 
@@ -71,15 +71,17 @@ Les écrans de réglage des durées et des textes depuis l'administration arrive
 | WebAssembly (`'wasm-unsafe-eval'`), workers et polices autorisés **sur la seule page de dépôt**, et seulement depuis l'application ; toujours ni script en ligne, ni `eval`, ni site tiers | `src/http.js` |
 | Bibliothèques servies depuis une liste fermée de chemins et de types (`/vendor/pdfjs/…`, `/vendor/libheif/…`) ; un test vérifie leurs empreintes | `src/app.js`, `tests/pdf.test.js` |
 | Toute préparation (PDF, HEIC) est abandonnée au bout de 60 s avec un message : la page ne reste jamais figée | `public/depot.js` |
-| **Étape 5 – envoi final et purges** | |
-| E-mail final à l'assistante : objet `[Embauche] Pièces reçues – Mme NOM – demande du JJ/MM/AAAA` (ou `[Mise à jour] …`), liste des pièces, mentions « À VÉRIFIER » et « CONTRÔLE SEULEMENT : à consulter puis supprimer, ne pas archiver » (casier judiciaire, permis), aucune donnée tirée des pièces ; découpé en (1/2), (2/2)… au-delà de 15 Mo | `src/emails.js`, `src/envoi.js` |
-| n8n ne reçoit que des adresses de PDF, sur un port interne non publié par Traefik, protégé par `INTERNAL_API_SECRET` (comparé à temps constant) ; le PDF n'est servi que pour un envoi en cours | `src/interne.js` |
-| Dès que n8n confirme le dernier e-mail : fichiers effacés, pièces et pages supprimées, lien du salarié invalidé, son e-mail effacé ; il ne reste que civilité, nom et statut « transmise » jusqu'à la purge | `src/envoi.js` |
-| Échec (n8n injoignable ou envoi refusé) : nouvelles tentatives à 15 min, 1 h et 4 h, en ne renvoyant que les e-mails non confirmés, puis alerte à l'administratrice ; alerte aussi si n8n reste 6 h sans nouvelles (sans renvoi, pour éviter un doublon) ; relance manuelle dans l'administration | `src/envoi.js` |
+| **Étape 5 – mise à disposition des pièces et purges** | |
+| **Aucune pièce par e-mail** : l'e-mail « pièces reçues » (objet `[Embauche] Pièces reçues – Mme NOM – demande du JJ/MM/AAAA`, liste des pièces, mentions « À VÉRIFIER » et « CONTRÔLE SEULEMENT ») contient seulement un bouton vers la page de téléchargement | `src/emails.js`, `src/envoi.js` |
+| Page de téléchargement réservée à la personne qui a fait la demande (même l'administratrice n'y a pas accès), connexion obligatoire ; PDF un par un ou ZIP ; réponses `no-store` | `src/app.js`, `src/pages.js`, `src/zip.js` |
+| Effacement des pièces, du lien et de l'e-mail du salarié : sur confirmation (« J'ai enregistré les pièces »), sinon 24 h après le premier téléchargement, et au plus tard à J+15 ; il ne reste que civilité, nom et statut | `src/envoi.js` |
+| Journal Brevo de **chaque** e-mail effacé par n8n juste après l'envoi (les journaux gardaient le contenu, liens personnels compris) ; un échec d'effacement est noté dans le journal d'activité | `deploy/n8n/SCD_envoyer_un_email.json`, `src/compteur.js` |
+| E-mail non parti (n8n ou Brevo en panne) : nouvelles tentatives à 15 min, 1 h et 4 h, puis alerte à l'administratrice et bouton « Relancer l'envoi » ; les pièces restent téléchargeables pendant ce temps | `src/envoi.js` |
+| Relance du salarié à J+7 avec le même lien : le lien est gardé **chiffré** (AES-256-GCM) et effacé dès l'envoi du dossier ; pas de relance après la date limite | `src/relances.js`, `src/demandes.js` |
 | Alertes sans nom ni donnée de salarié : seulement l'identifiant technique de la demande | `config/textes.json` |
-| Purge de sécurité faite par l'application elle-même (au démarrage puis toutes les heures), même si n8n est arrêté : toute demande expirée (15 jours au plus) est effacée entièrement, même si l'envoi n'a pas réussi ; les fichiers orphelins de plus d'une heure aussi | `src/purge.js`, `src/stockage.js` |
+| Purge de sécurité faite par l'application elle-même (au démarrage puis toutes les heures), même si n8n est arrêté : toute demande expirée (15 jours au plus) est effacée entièrement, et la personne qui l'a faite est prévenue si les pièces n'ont pas été récupérées ; les fichiers orphelins de plus d'une heure aussi | `src/purge.js`, `src/stockage.js` |
 | Compteur des e-mails du jour (heure de Paris) ; alerte unique à l'administratrice à 80 % de la part réservée sur le compte Brevo partagé | `src/compteur.js` |
-| n8n dédié : aucune exécution conservée, réussie ou en échec ; suppression **immédiate** des exécutions (`EXECUTIONS_DATA_PRUNE=false`, voir ci-dessous) ; pièces jointes en mémoire seulement ; webhooks non joignables depuis Internet (règle Traefik) | `deploy/docker-compose.scd-pieces.yml` |
+| n8n dédié : aucune exécution conservée, réussie ou en échec ; suppression **immédiate** des exécutions (`EXECUTIONS_DATA_PRUNE=false`) ; webhooks non joignables depuis Internet (règle Traefik) | `deploy/docker-compose.scd-pieces.yml` |
 
 ## Contrôle de lisibilité (étape 4)
 
@@ -110,40 +112,29 @@ Calibrage du 17/10/2026, sur des photos **fictives** fabriquées dans le navigat
 
 Seuils retenus (`config/controles.json`) : netteté 55, luminosité 60 à 235, reflet 3 %. **À confirmer** lors d'un essai avec de vrais téléphones et des documents fictifs imprimés : des photos fabriquées par programme ne remplacent pas un appareil réel.
 
-## Envoi final par n8n (étape 5)
+## Envoi par n8n et téléchargement des pièces (étape 5)
 
 Livrables dans `deploy/` :
 
 - `docker-compose.scd-pieces.yml` : projet Docker **séparé** `scd-pieces` (l'application et son n8n dédié), sur le réseau `root_default` pour Traefik, plus un réseau privé `scd-interne` entre l'application et n8n ;
-- `n8n/SCD_envoyer_un_email.json` : sous-workflow unique d'envoi, piloté par `EMAIL_PROVIDER=brevo|outlook` ;
-- `n8n/SCD_evenements_application.json` : réception des événements (signature HMAC vérifiée, horodatage de moins de 5 minutes), e-mails simples, envoi du dossier, confirmations et échecs ;
+- `n8n/SCD_envoyer_un_email.json` : sous-workflow unique d'envoi, piloté par `EMAIL_PROVIDER=brevo|outlook`, qui efface ensuite le journal Brevo de l'e-mail ;
+- `n8n/SCD_evenements_application.json` : réception des e-mails rédigés par l'application (signature HMAC vérifiée, horodatage de moins de 5 minutes) ;
 - `GUIDE_DEPLOIEMENT.md` : déploiement pas à pas (qui fait quoi), ce que n8n et Brevo conservent ;
-- `PROCEDURE_TEST_PURGE.md` : démontrer qu'il ne reste aucune trace des pièces (disque, base, n8n, journaux).
+- `PROCEDURE_TEST_PURGE.md` : démontrer qu'il ne reste aucune trace des pièces (disque, base, n8n, Brevo, journaux).
 
-**Validation du 17/10/2026**, sur un n8n 2.43.5 provisoire installé sur le PC, avec un faux serveur d'e-mail local et des données fictives. Rien n'est parti sur Internet. Ce qui a été vérifié :
+**Historique.**
+- 17/10/2026 : validation sur un n8n 2.43.5 provisoire. Pièges trouvés et corrigés : le sous-workflow doit lui aussi être **publié** ; `EXECUTIONS_DATA_PRUNE=true` ne fait que **marquer** les exécutions à supprimer, `false` les efface aussitôt.
+- 18/10/2026 : déploiement sur le VPS, puis essais réels (Gmail, Sébastien DOMINGO, iPhone, photo floue). **Brevo conservait les pièces jointes** dans ses journaux, consultables depuis son tableau de bord : les pièces ne partent donc plus par e-mail, et les journaux Brevo sont effacés après chaque envoi. Sur demande de M. Domingo, relance du salarié à J+7 ; sur demande de Christel, e-mail d'expiration, logo et couleurs violettes d'Essentiel & Domicile.
 
-- le lien de connexion et l'invitation arrivent par n8n ;
-- l'e-mail final arrive avec ses PDF en vraies pièces jointes ;
-- après la confirmation, l'application a tout effacé et le lien du salarié répond « plus valable » ;
-- un envoi refusé par le serveur d'e-mail est signalé à l'application, puis réussit à la nouvelle tentative.
-
-Trois pièges de n8n 2.x ont été trouvés et corrigés :
-
-- le sous-workflow doit lui aussi être **publié** ;
-- les pièces jointes passent par l'option « fileAttachments » (« attachments » les insère dans le corps du message) ;
-- avec `EXECUTIONS_DATA_PRUNE=true`, n8n se contente de **marquer** les exécutions à supprimer et garde les PDF dans sa base jusqu'à un nettoyage ultérieur. Avec `false`, il les efface aussitôt.
-
-Le n8n provisoire et les données d'essai ont été supprimés ensuite.
-
-**Ce que Brevo conserve :** par défaut, les journaux et aperçus des e-mails transactionnels sont gardés sans limite de durée. Une règle de conservation plus courte se règle dans le compte, qui est partagé avec Constats et PENA. Le guide détaille ce point et le risque résiduel.
+**Ce que Brevo conserve :** par défaut, les journaux et aperçus des e-mails transactionnels sont gardés sans limite de durée. L'effacement automatique après chaque envoi s'en charge ; en filet de sécurité, régler la durée de conservation la plus courte du compte (partagé avec Constats et PENA). Voir le guide.
 
 ## Limites connues
 
 - Un navigateur sans script (cas très rare sur téléphone) ne peut envoyer que des photos JPEG, ou des PNG simples (sans transparence) ; pas de PDF. Sans script, l'orientation des photos JPEG n'est pas corrigée.
 - Le test de bout en bout HEIC a besoin d'une photo HEIC d'exemple, non versionnée (voir « Tests »).
-- Pendant les quelques secondes de l'envoi, les PDF passent par la base de n8n ; des octets peuvent subsister dans l'espace libéré de ce fichier jusqu'au prochain redémarrage de n8n (`DB_SQLITE_VACUUM_ON_STARTUP`).
+- L'effacement d'un journal Brevo est traité par Brevo sous 72 h au plus (d'après son aide).
 - Phase 2 (Outlook) : le choix EMAIL_PROVIDER est en place, mais le nœud Outlook lui-même sera ajouté lors de la bascule (n8n refuse de publier un nœud Outlook sans identifiant).
-- Si n8n a bien envoyé l'e-mail mais que sa confirmation se perd, l'application ne renvoie rien : elle prévient l'administratrice au bout de 6 h. Mieux vaut un doublon évité qu'un dossier envoyé deux fois.
+- Le suivi de l'étape 6 n'est pas encore fait : pas de bouton « Relancer » ni « Annuler » pour la personne qui a fait la demande, pas de réglage des durées et des textes depuis l'administration.
 
 ## Développement local
 
@@ -165,7 +156,7 @@ Ouvrez http://localhost:3000. Avec `DEV_LOG_LINKS=1`, le lien de connexion s'aff
 npm test
 ```
 
-Ce sont des tests unitaires et d'intégration (`node:test`) : vrai serveur, base temporaire, comptes fictifs, aucun e-mail envoyé. n8n y est simulé : `tests/envoi.test.js` joue son rôle sur le port interne (téléchargement des PDF, confirmations, échecs).
+Ce sont des tests unitaires et d'intégration (`node:test`) : vrai serveur, base temporaire, comptes fictifs, aucun e-mail envoyé. n8n y est simulé par une boîte aux lettres en mémoire, qui peut aussi jouer une panne (`tests/aide.js`).
 
 Tests de bout en bout du parcours du salarié, sur iPhone (moteur de Safari) et Android (moteur de Chrome) simulés :
 
