@@ -13,7 +13,11 @@ const JOUR = 24 * 3600e3;
 // ── Unitaires ─────────────────────────────────────────────────────
 
 test('le catalogue livré se charge et contient le modèle d\'embauche du cahier des charges', () => {
-  assert.deepEqual(catalogue.modeles.embauche, ['CV', 'CNI', 'JDOM', 'CPAM', 'B3', 'RIB']);
+  assert.deepEqual(catalogue.modeles.embauche, ['CV', 'CNI_PASS', 'JDOM', 'CPAM', 'B3', 'RIB']);
+  // Retour de Christel du 18/10/2026 : CNI et passeport seuls faisaient doublon avec « Carte d'identité ou passeport ».
+  assert.equal(catalogue.pieces.get('CNI').dans_formulaire, false);
+  assert.equal(catalogue.pieces.get('PASS').dans_formulaire, false);
+  assert.equal(catalogue.pieces.get('CNI_PASS').dans_formulaire, true);
   assert.deepEqual(catalogue.modeles.mise_a_jour, []);
   assert.equal(catalogue.pieces.get('B3').controle_seulement, true);
   assert.equal(catalogue.pieces.get('PERMIS').controle_seulement, true);
@@ -76,6 +80,9 @@ test('le formulaire d\'embauche pré-coche les pièces du modèle ; celui de mis
     const embauche = await (await app.envoyer('/demandes/nouvelle?type=embauche', { cookie })).text();
     for (const a of catalogue.modeles.embauche) assert.match(embauche, new RegExp(`value="${a}" checked`));
     assert.doesNotMatch(embauche, /value="PERMIS" checked/);
+    assert.doesNotMatch(embauche, /value="CNI"|value="PASS"/, 'CNI et passeport seuls ne sont plus proposés');
+    assert.doesNotMatch(embauche, /value="PHOTO"/, 'photo d\'identité retirée (demande de Christel, 18/10/2026)');
+    assert.match(embauche, /value="CNI_PASS"/);
     const maj = await (await app.envoyer('/demandes/nouvelle?type=mise_a_jour', { cookie })).text();
     assert.doesNotMatch(maj, /checked/);
   } finally { await app.fermer(); }

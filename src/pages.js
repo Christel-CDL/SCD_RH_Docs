@@ -139,7 +139,7 @@ export function pageNouvelleDemande({ agence, session, catalogue, type, saisie =
   const coches = new Set(saisie ? saisie.pieces : catalogue.modeles[type]);
   const erreur = (champ) => (erreurs[champ] ? `<p class="erreur-champ" id="erreur-${champ}">${echapper(erreurs[champ])}</p>` : '');
   const decrit = (champ) => (erreurs[champ] ? ` aria-describedby="erreur-${champ}" aria-invalid="true"` : '');
-  const cases = catalogue.liste.map((p) => `
+  const cases = catalogue.liste.filter((p) => p.dans_formulaire).map((p) => `
         <li>
           <input type="checkbox" id="piece-${p.abrev}" name="pieces" value="${p.abrev}"${coches.has(p.abrev) ? ' checked' : ''}>
           <label for="piece-${p.abrev}">${echapper(p.libelle)}${p.controle_seulement ? ' <span class="discret">(contrôle seulement)</span>' : ''}</label>
@@ -310,7 +310,7 @@ export function pageAdminUtilisateurs({
         </form>
       </li>`).join('');
   const blocEnvois = `
-    <h2>Envois à l'assistante</h2>
+    <h2>Envois des pièces</h2>
     <p>E-mails envoyés aujourd'hui par l'outil : <strong>${emailsDuJour}</strong> sur une part de ${quota} par jour (compte Brevo partagé).</p>
     ${echecs ? `<p class="erreur-champ">Envois en échec : réparez d'abord n8n ou Brevo, puis relancez.</p><ul class="cartes">${echecs}</ul>` : '<p>Aucun envoi en échec.</p>'}`;
   const hors = (u) => u.role !== 'admin' && domaines.length && !domaines.includes(u.email.split('@')[1]);
@@ -318,7 +318,7 @@ export function pageAdminUtilisateurs({
       <li class="carte">
         <p class="carte-titre">${echapper(u.nom || u.email)}</p>
         <p>${echapper(u.email)}</p>
-        <p>${u.role === 'admin' ? 'Administratrice' : 'Assistante'} ·
+        <p>${u.role === 'admin' ? 'Administratrice' : 'Peut faire des demandes'} ·
            <span class="statut statut-${u.actif ? 'actif' : 'inactif'}">${u.actif ? 'Active' : 'Désactivée'}</span>
            · ${u.demandes} demande${u.demandes > 1 ? 's' : ''}</p>
         ${hors(u) ? '<p class="erreur-champ">Domaine hors de la liste autorisée : cette adresse ne peut plus se connecter.</p>' : ''}
@@ -345,7 +345,7 @@ export function pageAdminUtilisateurs({
     <h2>Ajouter une adresse autorisée</h2>
     <form method="post" action="/admin/utilisateurs" class="formulaire">
       ${csrf(session)}
-      <label for="nom">Prénom et nom de l'assistante</label>
+      <label for="nom">Prénom et nom (cités dans les e-mails envoyés aux salariés)</label>
       <input id="nom" name="nom" type="text" required maxlength="80" value="${echapper(saisie.nom || '')}">
       <label for="email">Adresse e-mail professionnelle</label>
       <input id="email" name="email" type="email" inputmode="email" required maxlength="254" value="${echapper(saisie.email || '')}">

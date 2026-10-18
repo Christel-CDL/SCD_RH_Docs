@@ -18,7 +18,7 @@ export function chargerCatalogue(dossier) {
     } else if (!PAGES.has(p.pages)) {
       throw new Error(`pieces.json : « pages » de ${p.abrev} doit valoir recto_verso, une ou plusieurs`);
     }
-    pieces.set(p.abrev, { ...p, controle_seulement: Boolean(p.controle_seulement), choix: p.choix || null });
+    pieces.set(p.abrev, { ...p, controle_seulement: Boolean(p.controle_seulement), choix: p.choix || null, dans_formulaire: p.dans_formulaire !== false });
   }
   for (const p of pieces.values()) {
     for (const c of p.choix || []) {
@@ -28,7 +28,10 @@ export function chargerCatalogue(dossier) {
   const modeles = {};
   for (const type of ['embauche', 'mise_a_jour']) {
     const liste = brut.modeles?.[type] || [];
-    for (const abrev of liste) if (!pieces.has(abrev)) throw new Error(`pieces.json : modèle ${type}, pièce inconnue « ${abrev} »`);
+    for (const abrev of liste) {
+      if (!pieces.has(abrev)) throw new Error(`pieces.json : modèle ${type}, pièce inconnue « ${abrev} »`);
+      if (!pieces.get(abrev).dans_formulaire) throw new Error(`pieces.json : modèle ${type}, « ${abrev} » n'est pas proposée dans le formulaire (dans_formulaire: false)`);
+    }
     modeles[type] = liste;
   }
 

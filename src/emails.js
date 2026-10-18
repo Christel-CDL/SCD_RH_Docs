@@ -45,7 +45,7 @@ export function creerEmails({ textes, catalogue, config }) {
     const modele = textes.invitation[demande.type];
     const valeurs = {
       agence: config.agence,
-      assistante: assistante.nom || assistante.email,
+      demandeur: assistante.nom || assistante.email,
       civilite: demande.civilite,
       nom: demande.nom,
       date_limite: dateLongue(demande.date_limite),
@@ -73,7 +73,7 @@ export function creerEmails({ textes, catalogue, config }) {
       civilite: demande.civilite,
       nom: demande.nom,
       date_demande: dateCourte(demande.cree_le),
-      assistante: assistante.nom || assistante.email,
+      demandeur: assistante.nom || assistante.email,
       partie: total > 1 ? ` (${numero}/${total})` : '',
     };
     valeurs.liste = pieces.map((p) => [

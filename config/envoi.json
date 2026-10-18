@@ -1,5 +1,5 @@
 {
-  "_aide": "Réglages de l'envoi final des pièces à l'assistante, par n8n. Modifiables sans toucher au code (redémarrer l'application ensuite).",
+  "_aide": "Réglages de l'envoi final des pièces à la personne qui a fait la demande, par n8n. Modifiables sans toucher au code (redémarrer l'application ensuite).",
   "seuil_decoupage_mo": 15,
   "_seuil_decoupage_mo": "Au-delà de ce total de pièces jointes, l'envoi est découpé en plusieurs e-mails numérotés (1/2), (2/2). Brevo accepte 20 Mo par e-mail au plus.",
   "quota_journalier": 150,

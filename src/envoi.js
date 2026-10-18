@@ -95,7 +95,7 @@ export function creerEnvoi({ db, config, emails, depot, notificateur, reglagesEn
     journaliser(db, 'envoi_en_echec', { demandeId: envoi.demande_id });
     await alerter(
       'un dossier complet n\'a pas pu être envoyé',
-      `Après ${tentatives} tentatives, les pièces d'un dossier complet n'ont pas pu être envoyées à l'assistante (${raison}). `
+      `Après ${tentatives} tentatives, les pièces d'un dossier complet n'ont pas pu être envoyées à la personne qui les a demandées (${raison}). `
       + 'Les pièces sont conservées, chiffrées, jusqu\'à la purge automatique à 15 jours après la demande. '
       + 'Vérifiez n8n et le compte Brevo, puis relancez l\'envoi.',
       envoi.demande_id,
@@ -202,7 +202,7 @@ export function creerEnvoi({ db, config, emails, depot, notificateur, reglagesEn
       await alerter(
         'n8n ne donne pas de nouvelles d\'un envoi',
         `n8n a reçu un dossier complet il y a plus de ${Math.round(reglagesEnvoi.silenceMs / 3600e3)} h mais n'a ni confirmé ni signalé d'échec. `
-        + 'Vérifiez les exécutions du workflow « SCD – Envoi du dossier » dans n8n et la boîte de l\'assistante avant de relancer quoi que ce soit (risque de doublon).',
+        + 'Vérifiez le workflow « SCD – Événements de l\'application » dans n8n, et demandez à la personne qui a fait la demande si elle a reçu les pièces, avant de relancer quoi que ce soit (risque de doublon).',
         envoi.demande_id,
       );
     }
