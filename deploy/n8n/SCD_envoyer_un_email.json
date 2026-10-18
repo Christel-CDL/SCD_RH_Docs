@@ -38,8 +38,9 @@
         "fromEmail": "={{ $json.nom_expediteur }} <{{ $env.SCD_EXPEDITEUR }}>",
         "toEmail": "={{ $json.destinataire }}",
         "subject": "={{ $json.sujet }}",
-        "emailFormat": "text",
+        "emailFormat": "both",
         "text": "={{ $json.texte }}",
+        "html": "={{ $json.html }}",
         "options": {
           "appendAttribution": false,
           "fileAttachments": "={{ $json.pieces_binaires || '' }}",

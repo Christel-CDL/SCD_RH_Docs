@@ -325,3 +325,37 @@ test('compteur : chaque e-mail parti est compté ; alerte unique à 80 % de la p
     fs.rmSync(dossier, { recursive: true, force: true });
   }
 });
+
+// ── Version mise en forme des e-mails (bouton) ────────────────────
+
+test('e-mails en double format : bouton cliquable, lien en clair en secours, texte échappé', async () => {
+  const { versHtml } = await import('../src/emails.js');
+  const emails = creerEmails({ textes: chargerTextes('config'), catalogue: chargerCatalogue('config'), config: { agence: 'Agence fictive', adminEmail: 'admin@exemple.test', dureeLienConnexionMs: 15 * 60e3 } });
+  const lien = 'https://pieces.exemple.test/connexion/lien?jeton=JETON_FICTIF_123';
+  const connexion = emails.lienConnexion({ utilisateur: { email: 'a@exemple.test' }, lien });
+  assert.ok(connexion.texte.includes(lien), 'la version texte garde le lien');
+  const bouton = connexion.html.match(/<a href="([^"]+)"[^>]*>Me connecter<\/a>/);
+  assert.ok(bouton, 'un bouton « Me connecter »');
+  assert.equal(bouton[1], lien);
+  assert.match(connexion.html, /Si le bouton ne fonctionne pas, copiez ce lien/);
+  assert.equal(connexion.html.split(lien).length - 1, 3, 'bouton + lien de secours (adresse et texte affiché)');
+
+  const invitation = emails.invitation({
+    demande: { type: 'embauche', civilite: 'Mme', nom: 'ZZ TEST', email_salarie: 'zz@exemple.test', date_limite: Date.UTC(2026, 9, 31, 17) },
+    abrevs: ['CV', 'RIB'],
+    assistante: { email: 'assistante@exemple.test', nom: 'Assistante Fictive' },
+    lien: 'https://pieces.exemple.test/d/LIEN_FICTIF',
+  });
+  assert.match(invitation.html, /<a href="https:\/\/pieces\.exemple\.test\/d\/LIEN_FICTIF"[^>]*>Déposer mes documents<\/a>/);
+  assert.match(invitation.html, /Curriculum vitae/);
+
+  // Alerte et e-mail final : version mise en forme sans bouton.
+  const alerte = emails.alerte({ titre: 'essai', detail: 'détail fictif' });
+  assert.ok(alerte.html.includes('détail fictif') && !alerte.html.includes('<a '));
+
+  // Tout est échappé : un texte piégé ne devient jamais du HTML actif.
+  const piege = versHtml('Bonjour <script>alert(1)</script> & "x"\nhttps://e.test/?a=1&b=<2>', { lien: 'https://e.test/?a=1&b=<2>', bouton: '<b>Go</b>', secours: 'secours' });
+  assert.ok(!/<script|<b>/.test(piege));
+  assert.match(piege, /&lt;script&gt;alert\(1\)&lt;\/script&gt; &amp; &quot;x&quot;/);
+  assert.match(piege, /href="https:\/\/e\.test\/\?a=1&amp;b=&lt;2&gt;"/);
+});

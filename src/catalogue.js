@@ -48,7 +48,7 @@ export function chargerCatalogue(dossier) {
 export function chargerTextes(dossier) {
   const textes = JSON.parse(fs.readFileSync(path.join(dossier, 'textes.json'), 'utf8'));
   const requis = [
-    ['nom_expediteur'], ['lien_connexion', 'sujet'], ['lien_connexion', 'texte'],
+    ['nom_expediteur'], ['lien_secours'], ['lien_connexion', 'sujet'], ['lien_connexion', 'texte'], ['lien_connexion', 'bouton'], ['invitation', 'bouton'],
     ['invitation', 'embauche', 'sujet'], ['invitation', 'embauche', 'intro'],
     ['invitation', 'mise_a_jour', 'sujet'], ['invitation', 'mise_a_jour', 'intro'], ['invitation', 'texte'],
     ...['sujet', 'texte', 'a_verifier', 'controle_seulement', 'mention_a_verifier', 'mention_controle_seulement', 'suite'].map((m) => ['envoi_final', m]),
