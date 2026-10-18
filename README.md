@@ -61,7 +61,7 @@ Les écrans de réglage des durées et des textes depuis l'administration arrive
 | « Envoyer mon dossier » n'est possible que lorsque toutes les pièces sont déposées ; après la date limite, plus aucun dépôt | `src/depot.js` |
 | CSP ouverte au strict nécessaire : `script-src 'self'`, aperçus en `blob:`, `connect-src 'self'` ; tout POST de dépôt passe le contrôle d'origine | `src/http.js` |
 | Style et script revalidés à chaque affichage (`no-cache` + ETag) : après une mise à jour, aucun téléphone ne garde l'ancien script | `src/app.js` |
-| Mention d'information RGPD (article 13) en tête de la page de dépôt, complétée le 18/10/2026 (SCD SERVICES responsable du traitement, CDL EXPERTISES sous-traitant, hébergement Hostinger en France) : **à faire relire par le gérant de l'agence** avant la mise en service | `config/textes.json` |
+| Mention d'information RGPD (article 13) en tête de la page de dépôt, complétée le 18/10/2026 (SCD SERVICES responsable du traitement, CDL EXPERTISES sous-traitant, hébergement Hostinger en France) : validée par le gérant de l'agence le 18/10/2026 | `config/textes.json` |
 | **Étape 4 – lisibilité et PDF** | |
 | PDF « désarmés » : chaque page d'un PDF envoyé par le salarié est dessinée en image dans le téléphone (pdf.js, sans exécuter ses scripts : le moteur correspondant n'est même pas livré). L'application refait elle-même le PDF : ni auteur, ni logiciel, ni script, ni pièce jointe cachée ne peuvent arriver chez l'assistante. Un PDF brut reçu par le serveur est refusé | `public/depot.js`, `src/fichiers.js` |
 | PDF finaux fabriqués en mémoire au moment de l'envoi, à partir des pages chiffrées : aucune copie en clair sur le disque. Pas de dictionnaire /Info ni de métadonnées XMP | `src/pdf.js`, `src/depot.js` |
