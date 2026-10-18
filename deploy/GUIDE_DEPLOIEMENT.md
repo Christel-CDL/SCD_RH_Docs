@@ -73,7 +73,13 @@ Compte propriétaire avec votre adresse et un mot de passe propre à ce n8n. Act
 
 Brevo garde dans ses journaux le contenu des e-mails (liens personnels compris). n8n efface le journal de chaque e-mail juste après l'envoi ; il lui faut pour cela une clé **API** (différente de la clé SMTP).
 
-1. Brevo → **SMTP & API** → onglet **Clés API** → **Générer une nouvelle clé API**, nommée « n8n SCD pièces – effacement des journaux ». Copiez-la tout de suite et rangez-la dans votre gestionnaire.
+1. Créer la clé dans Brevo :
+   1. https://app.brevo.com, compte habituel (`expertform.fr`).
+   2. En haut à droite, cliquez sur le **nom du compte** (ou vos initiales) → **SMTP & API**.
+   3. Onglet **Clés API** (parfois « Clés API & MCP »), pas l'onglet SMTP. Ne touchez pas aux clés existantes (Constats, PENA).
+   4. **Générer une nouvelle clé API** (si Brevo demande le type : clé API, pas MCP).
+   5. Nom : `n8n SCD pièces – effacement des journaux` → **Générer**.
+   6. La clé (commence par `xkeysib-`) n'est affichée **qu'une fois** : **Copier**, puis collez-la dans votre gestionnaire de mots de passe. Fenêtre fermée trop tôt ? Supprimez la clé et recommencez.
 2. n8n → **Credentials** → **Create credential** → cherchez **Header Auth** :
    - nom de l'identifiant (en haut) : `Brevo API SCD`, exactement ;
    - **Name** : `api-key` ;
