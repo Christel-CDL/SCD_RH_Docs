@@ -243,6 +243,22 @@ test('n8n silencieux depuis 6 h : une seule alerte, sans renvoyer l\'e-mail (ris
   } finally { await app.fermer(); }
 });
 
+test('dossier complet resté sans envoi (arrêt de l\'application au mauvais moment) : rattrapé à la minute suivante', async () => {
+  const app = await demarrer();
+  try {
+    await dossierEnvoye(app);
+    // Simule un arrêt entre « dossier complet » et la création de l'envoi.
+    app.db.prepare('DELETE FROM envois').run();
+    const avant = app.boite.filter((m) => m.evenement === 'envoi_dossier').length;
+    await app.envoi.tic();
+    assert.equal(app.boite.filter((m) => m.evenement === 'envoi_dossier').length, avant, 'pas avant une minute (le clic est peut-être en cours)');
+    app.db.prepare('UPDATE demandes SET complete_le = ?').run(Date.now() - 2 * 60e3);
+    await app.envoi.tic();
+    assert.equal(app.boite.filter((m) => m.evenement === 'envoi_dossier').length, avant + 1);
+    assert.equal(app.db.prepare('SELECT statut FROM envois').get().statut, 'notifie');
+  } finally { await app.fermer(); }
+});
+
 // ── Purges ────────────────────────────────────────────────────────
 
 test('purge à 15 jours : la demande expirée est effacée entièrement, même si l\'envoi n\'a pas réussi', async () => {

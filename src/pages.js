@@ -290,8 +290,8 @@ export function pageDepotTermine({ agence, demande }) {
     titre: 'Dossier envoyé',
     contenu: `
     <h1>Merci ${echapper(demande.civilite)} ${echapper(demande.nom)}</h1>
-    ${message('Votre dossier est complet : il a bien été envoyé à l\'agence.')}
-    <p>Vos documents seront supprimés de cet outil dès qu'ils auront été transmis à l'agence. Vous pouvez fermer cette page.</p>`,
+    ${message('Votre dossier est complet : il est transmis automatiquement à l\'agence. Vous n\'avez plus rien à faire.')}
+    <p>Vos documents seront supprimés de cet outil dès que l'agence les aura reçus. Vous pouvez fermer cette page.</p>`,
   });
 }
 

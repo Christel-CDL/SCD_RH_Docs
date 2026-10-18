@@ -43,6 +43,8 @@ export function creerEnvoi({ db, config, emails, depot, notificateur, reglagesEn
     alerte: db.prepare('UPDATE envois SET alerte_le = ? WHERE id = ?'),
     dus: db.prepare("SELECT * FROM envois WHERE statut = 'a_notifier' AND prochaine_tentative <= ?"),
     silencieux: db.prepare("SELECT * FROM envois WHERE statut = 'notifie' AND alerte_le IS NULL AND notifie_le <= ?"),
+    // Dossiers complets sans envoi : l'application s'est arrêtée (redéploiement…) juste après le clic du salarié.
+    orphelins: db.prepare("SELECT d.id FROM demandes d LEFT JOIN envois e ON e.demande_id = d.id WHERE d.statut = 'complete' AND e.id IS NULL AND d.complete_le <= ?"),
     enEchec: db.prepare("SELECT id, demande_id, tentatives, alerte_le FROM envois WHERE statut = 'echec' ORDER BY alerte_le DESC"),
     demande: db.prepare('SELECT * FROM demandes WHERE id = ?'),
     assistante: db.prepare('SELECT email, nom FROM utilisateurs WHERE id = ?'),
@@ -193,6 +195,7 @@ export function creerEnvoi({ db, config, emails, depot, notificateur, reglagesEn
 
   // Appelé régulièrement : nouvelles tentatives arrivées à échéance, envois restés sans nouvelles de n8n.
   async function tic() {
+    for (const { id } of requetes.orphelins.all(Date.now() - 60e3)) await lancer(id);
     for (const envoi of requetes.dus.all(Date.now())) await transmettre(envoi);
     for (const envoi of requetes.silencieux.all(Date.now() - reglagesEnvoi.silenceMs)) {
       requetes.alerte.run(Date.now(), envoi.id);
