@@ -80,7 +80,8 @@ Brevo garde dans ses journaux le contenu des e-mails (liens personnels compris).
    4. **Générer une nouvelle clé API** (si Brevo demande le type : clé API, pas MCP).
    5. Nom : `n8n SCD pièces – effacement des journaux` → **Générer**.
    6. La clé (commence par `xkeysib-`) n'est affichée **qu'une fois** : **Copier**, puis collez-la dans votre gestionnaire de mots de passe. Fenêtre fermée trop tôt ? Supprimez la clé et recommencez.
-2. n8n → **Credentials** → **Create credential** → cherchez **Header Auth** :
+   - **La clé expire au bout d'un an** (clé actuelle « BREVO API SCD 2 », créée le 19/10/2026, expire le **19/10/2027**) : la renouveler avant, sinon l'effacement des journaux s'arrête sans prévenir.
+2. n8n → **Credentials** → **Create credential** → cherchez **Header Auth** (vérifié le 19/10/2026 : le champ **Name** doit contenir `api-key` et rien d'autre ; avec un autre texte, l'effacement échoue sans bruit) :
    - nom de l'identifiant (en haut) : `Brevo API SCD`, exactement ;
    - **Name** : `api-key` ;
    - **Value** : la clé API.
@@ -102,7 +103,7 @@ Les deux workflows sont déjà installés. Pour les **mettre à jour** sans cass
 
 Les **deux** workflows doivent être publiés : un sous-workflow non publié ne s'exécute pas (constaté le 17/10/2026). Pour une première installation, utilisez simplement **Create workflow** → **Import from File** pour chacun.
 
-**Vérification :** les deux workflows sont marqués « Published ». Demandez un lien de connexion : il arrive, et quelques minutes plus tard son journal n'apparaît plus dans Brevo (ou au plus tard sous 72 h, selon Brevo). Si le journal reste au-delà de 72 h, vérifiez l'identifiant `Brevo API SCD` dans le nœud « Effacer le journal Brevo ».
+**Vérification :** les deux workflows sont marqués « Published ». Demandez un lien de connexion : il arrive, et quelques minutes plus tard son journal n'apparaît plus dans Brevo (ou au plus tard sous 72 h, selon Brevo). Si le journal reste au-delà de 72 h, vérifiez l'identifiant `Brevo API SCD` dans le nœud « Effacer le journal Brevo ». Pour diagnostiquer : importer `deploy/n8n/TEST_effacer_un_journal_Brevo.json` dans un workflow provisoire, y coller l'« ID du message » d'un e-mail (Brevo → Journaux → œil), choisir l'identifiant, **Execute workflow** : `statusCode` 204 = effacé (format avec chevrons), 401 = clé refusée. Supprimer ensuite ce workflow. Le 19/10/2026, ce test a révélé un champ **Name** erroné dans l'identifiant.
 
 ## 8. Essai complet (vous, avec des documents fictifs)
 

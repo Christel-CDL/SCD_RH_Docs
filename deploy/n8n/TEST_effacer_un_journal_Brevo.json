@@ -1,0 +1,48 @@
+{
+  "name": "TEST – effacer un journal Brevo (à supprimer après l'essai)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "7c2e5d10-0001-4a1b-9c3d-0000000000c1",
+      "name": "Lancer l'essai",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Diagnostic (19/10/2026) : coller l'« ID du message » d'un e-mail, copié dans Brevo → Journaux. 204 = effacé.\n// Deux essais : avec et sans les chevrons < >, pour voir lequel Brevo accepte.\nconst id = '<COLLER ICI L ID DU MESSAGE COPIÉ DANS BREVO>';\nreturn [\n  { json: { essai: 'avec chevrons', messageId: id } },\n  { json: { essai: 'sans chevrons', messageId: id.replace(/^<|>$/g, '') } },\n];"
+      },
+      "id": "7c2e5d10-0002-4a1b-9c3d-0000000000c2",
+      "name": "Identifiant à effacer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 200]
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "=https://api.brevo.com/v3/smtp/log/{{ encodeURIComponent($json.messageId) }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "response": { "response": { "fullResponse": true, "neverError": true } }
+        }
+      },
+      "id": "7c2e5d10-0003-4a1b-9c3d-0000000000c3",
+      "name": "Effacer le journal Brevo (essai)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 200],
+      "credentials": { "httpHeaderAuth": { "id": "", "name": "Brevo API SCD" } },
+      "notes": "Choisir l'identifiant « BREVO API SCD ». La réponse de Brevo (code et message) s'affiche à droite.",
+      "notesInFlow": true
+    }
+  ],
+  "connections": {
+    "Lancer l'essai": { "main": [[{ "node": "Identifiant à effacer", "type": "main", "index": 0 }]] },
+    "Identifiant à effacer": { "main": [[{ "node": "Effacer le journal Brevo (essai)", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1", "saveDataSuccessExecution": "none", "saveDataErrorExecution": "none", "saveManualExecutions": false },
+  "pinData": {}
+}
