@@ -11,7 +11,7 @@ Cahier des charges : `OneDrive - CDL EXPERTISES\DEV-CONSULT\SCD\SCD Services\PRO
 | 3 | Dépôt avec brouillon (pièces chiffrées AES-256-GCM) | **fait** |
 | 4 | Contrôle de lisibilité, génération des PDF | **fait** |
 | 5 | Envoi par n8n, téléchargement des pièces, purge vérifiée | **fait**, en ligne sur le VPS |
-| 6 | Relances, expiration, suivi | **en cours** (décisions du 18/10/2026 dans CLAUDE.md) : relance du salarié à J+7, e-mail d'expiration, guide utilisateur, boutons « Relancer le salarié » (une fois par 24 h, `src/relances.js`) et « Annuler la demande » (`src/annulation.js`), écrans **Réglages** et **Textes** de l'administration (`src/parametres.js`) faits ; restent la note d'architecture et la fiche du registre |
+| 6 | Relances, expiration, suivi | **en cours** (décisions du 18/10/2026 dans CLAUDE.md) : relance du salarié à J+7, e-mail d'expiration, guide utilisateur, boutons « Relancer le salarié » (une fois par 24 h, `src/relances.js`) et « Annuler la demande » (`src/annulation.js`), écrans **Réglages** et **Textes** de l'administration (`src/parametres.js`) faits ; note d'architecture et de sécurité (livrable 1) et fiche du registre des traitements (livrable 5) rédigées le 19/10/2026 dans Claude Docs, à valider (https://claude.ai/code/artifact/9af85a87-bb2e-43f9-8e7f-7dd7180f5732 et https://claude.ai/code/artifact/c225bedc-1157-418d-94a8-de5bad9060a1) |
 
 Guide d'une page pour les personnes qui font les demandes : page **Aide** de l'application (`/aide`, imprimable) et `docs/Guide_utilisateur_agence.pdf`, refait par `node tests/e2e/guide-pdf.mjs docs/Guide_utilisateur_agence.pdf` après toute modification du texte (`pageGuide` dans `src/pages.js`).
 
