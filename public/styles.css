@@ -207,5 +207,9 @@ th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--
 .reglage .discret { margin: 0; }
 .reglage .lien { align-self: flex-start; padding-left: 0; }
 .modifie { font-size: .85rem; font-weight: 600; color: var(--accent); background: var(--info-fond); border-radius: .25rem; padding: 0 .35rem; }
-textarea { width: 100%; padding: .6rem .8rem; font: inherit; font-size: 1rem; border: 2px solid var(--bord); border-radius: .5rem; background: #fff; resize: vertical; }
-.texte-email { white-space: pre-wrap; font-family: inherit; font-size: .95rem; background: var(--fond); border-radius: .5rem; padding: .75rem; margin: .5rem 0 0; }
+textarea { width: 100%; padding: .6rem .8rem; font: inherit; border: 2px solid var(--bord); border-radius: .5rem; background: #fff; resize: vertical; }
+.texte-email { white-space: pre-wrap; font: inherit; background: var(--fond); border-radius: .5rem; padding: .75rem; margin: .5rem 0 0; }
+/* Même police partout dans les écrans Réglages et Textes (demande de Christel du 19/10/2026) : champs d'une ou plusieurs
+   lignes à la même taille, mots {{ }} dans la police du texte. */
+.reglage input[type="text"], .reglage textarea { font: inherit; font-size: 1rem; line-height: 1.5; }
+code { font: inherit; font-weight: 600; color: var(--accent); }
