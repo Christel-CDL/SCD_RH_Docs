@@ -403,7 +403,8 @@ export function pageAdminUtilisateurs({
     titre: 'Administration',
     contenu: `
     <h1>Administration</h1>
-    <p><a href="/admin/journal">Voir le journal d'activité</a></p>
+    <p class="liens-admin"><a href="/admin/reglages">Réglages (durées, quotas, lisibilité)</a> · <a href="/admin/textes">Textes des e-mails et de la page de dépôt</a>
+      · <a href="/admin/journal">Journal d'activité</a></p>
     ${message(info)}${message(erreur, true)}
     <h2>Ajouter une adresse autorisée</h2>
     <form method="post" action="/admin/utilisateurs" class="formulaire">
@@ -424,6 +425,115 @@ export function pageAdminUtilisateurs({
     ${blocEnvois}
     <h2>Adresses autorisées</h2>
     <ul class="cartes">${lignes}</ul>`,
+  });
+}
+
+// ── Réglages (étape 6) ────────────────────────────────────────────
+
+// Un champ numérique, avec sa valeur d'origine et son éventuelle erreur.
+function champNombre(c, erreurs, saisie) {
+  const id = `r-${c.cle.replace(/\./g, '-')}`;
+  const valeur = saisie ? saisie.get(c.cle) ?? '' : c.valeur;
+  const erreur = erreurs[c.cle];
+  return `
+      <div class="reglage">
+        <label for="${id}">${echapper(c.libelle)}${c.modifie ? ' <span class="modifie">modifié</span>' : ''}</label>
+        <input id="${id}" name="${echapper(c.cle)}" type="text" inputmode="${c.liste ? 'text' : 'decimal'}" value="${echapper(valeur)}"
+          ${erreur ? `aria-invalid="true" aria-describedby="${id}-erreur"` : `aria-describedby="${id}-aide"`}>
+        ${erreur ? `<p class="erreur-champ" id="${id}-erreur">${echapper(erreur)}</p>` : ''}
+        <p class="discret" id="${id}-aide">${c.aide ? `${echapper(c.aide)} ` : ''}${c.liste ? '' : `De ${echapper(String(c.min).replace('.', ','))} à ${echapper(String(c.max).replace('.', ','))}. `}Valeur d'origine : ${echapper(c.origine)}.</p>
+      </div>`;
+}
+
+export function pageAdminReglages({ agence, session, envoi, controles, info = '', section = null, erreurs = {}, saisie = null }) {
+  const bloc = (nom, titre, intro, champs) => `
+    <section class="bloc-reglages" id="${nom}">
+      <h2>${titre}</h2>
+      <p>${intro}</p>
+      ${section === nom && erreurs.general ? message(erreurs.general, true) : ''}
+      <form method="post" action="/admin/reglages/${nom}" class="formulaire" novalidate>
+        ${csrf(session)}
+        ${champs.map((c) => champNombre(c, section === nom ? erreurs : {}, section === nom ? saisie : null)).join('')}
+        <button type="submit" class="bouton">Enregistrer</button>
+        ${champs.some((c) => c.modifie) ? `<button type="submit" class="lien" formaction="/admin/reglages/${nom}/retablir">Revenir aux valeurs d'origine</button>` : ''}
+      </form>
+    </section>`;
+  return gabarit({
+    agence,
+    session,
+    titre: 'Réglages',
+    contenu: `
+    <h1>Réglages</h1>
+    <p><a href="/admin/utilisateurs">Retour à l'administration</a> · <a href="/admin/textes">Textes</a></p>
+    ${message(info)}
+    ${section && !erreurs.general ? message('Rien n\'est enregistré : corrigez les champs signalés.', true) : ''}
+    <p>Les changements valent aussitôt. La purge à 15 jours et la date limite (14 jours) ne sont pas réglables.</p>
+    ${bloc('envoi', 'Relance et e-mails', 'Relance automatique du salarié et part du compte Brevo réservée à l\'outil.', envoi)}
+    ${bloc('controles', 'Contrôle des photos', 'Seuils appliqués dans le téléphone du salarié. Réglés le 17/10/2026 sur des photos fictives : à modifier avec prudence, après des retours concrets.', controles)}`,
+  });
+}
+
+export function pageAdminTextes({ agence, session, champs, info = '', erreurs = {}, apercu = null }) {
+  const groupes = [...new Set(champs.map((c) => c.groupe))];
+  const champ = (c) => {
+    const id = `t-${c.cle.replace(/\./g, '-')}`;
+    const erreur = erreurs[c.cle];
+    const decrit = erreur ? `aria-invalid="true" aria-describedby="${id}-erreur ${id}-aide"` : `aria-describedby="${id}-aide"`;
+    const lignes = Math.min(14, Math.max(2, c.valeur.split('\n').length + Math.ceil(c.valeur.length / 70)));
+    return `
+        <div class="reglage">
+          <label for="${id}">${echapper(c.libelle)}${c.modifie ? ' <span class="modifie">modifié</span>' : ''}</label>
+          ${c.long
+    ? `<textarea id="${id}" name="${echapper(c.cle)}" rows="${lignes}" ${decrit}>${echapper(c.valeur)}</textarea>`
+    : `<input id="${id}" name="${echapper(c.cle)}" type="text" value="${echapper(c.valeur)}" ${decrit}>`}
+          ${erreur ? `<p class="erreur-champ" id="${id}-erreur">${echapper(erreur)}</p>` : ''}
+          <p class="discret" id="${id}-aide">${c.variables.length ? `Mots remplacés automatiquement : ${c.variables.map((v) => `<code>{{${echapper(v)}}}</code>`).join(' ')}` : 'Aucun mot remplacé automatiquement.'}</p>
+          ${c.modifie ? `<button type="submit" class="lien" formaction="/admin/textes/retablir" name="cle" value="${echapper(c.cle)}">Revenir au texte d'origine</button>` : ''}
+        </div>`;
+  };
+  const blocs = groupes.map((g) => `
+      <fieldset class="bloc-reglages">
+        <legend>${echapper(g)}</legend>
+        ${champs.filter((c) => c.groupe === g).map(champ).join('')}
+      </fieldset>`).join('');
+  const apercus = apercu ? `
+    <section id="apercu" class="apercu-emails">
+      <h2>Aperçu des e-mails (exemple fictif)</h2>
+      ${message('Aperçu seulement : rien n\'est encore enregistré. Cliquez sur « Enregistrer les textes » pour les mettre en service.')}
+      ${apercu.map((e) => `
+      <article class="carte">
+        <h3>${echapper(e.titre)}</h3>
+        <p><strong>De :</strong> ${echapper(e.expediteur)}<br><strong>Objet :</strong> ${echapper(e.sujet)}</p>
+        <pre class="texte-email">${echapper(e.texte)}</pre>
+      </article>`).join('')}
+    </section>` : '';
+  const nbErreurs = Object.keys(erreurs).length;
+  return gabarit({
+    agence,
+    session,
+    titre: 'Textes',
+    large: true,
+    contenu: `
+    <h1>Textes des e-mails et de la page de dépôt</h1>
+    <p><a href="/admin/utilisateurs">Retour à l'administration</a> · <a href="/admin/reglages">Réglages</a></p>
+    ${message(info)}
+    ${nbErreurs ? message(`Rien n'est enregistré : ${nbErreurs} texte${nbErreurs > 1 ? 's sont' : ' est'} à corriger (signalé${nbErreurs > 1 ? 's' : ''} en rouge).`, true) : ''}
+    <p>Les mots entre <code>{{ }}</code> sont remplacés automatiquement (nom du salarié, lien…) : ne les modifiez pas.
+      Ne demandez jamais de mot de passe ni de coordonnées bancaires dans un e-mail. Utilisez « Aperçu » pour relire avant d'enregistrer.</p>
+    ${apercus}
+    <form method="post" action="/admin/textes" class="formulaire" novalidate>
+      ${csrf(session)}
+      <div class="actions">
+        <button type="submit" class="bouton secondaire" name="action" value="apercu">Aperçu</button>
+        <button type="submit" class="bouton" name="action" value="enregistrer">Enregistrer les textes</button>
+      </div>
+      ${blocs}
+      <div class="actions">
+        <button type="submit" class="bouton secondaire" name="action" value="apercu">Aperçu</button>
+        <button type="submit" class="bouton" name="action" value="enregistrer">Enregistrer les textes</button>
+      </div>
+      ${champs.some((c) => c.modifie) ? '<button type="submit" class="lien danger" formaction="/admin/textes/retablir" name="cle" value="*">Revenir aux textes d\'origine pour tous les textes</button>' : ''}
+    </form>`,
   });
 }
 

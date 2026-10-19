@@ -25,7 +25,8 @@ export function versHtml(texte, { lien = null, bouton = null, secours = '' } = {
 }
 
 export function creerEmails({ textes, catalogue, config }) {
-  const base = { nom_expediteur: textes.nom_expediteur };
+  // Lu à chaque e-mail : les textes peuvent changer depuis l'administration.
+  const base = { get nom_expediteur() { return textes.nom_expediteur; } };
   // Ajoute la version mise en forme à un message déjà composé en texte.
   const avecHtml = (message, options = {}) => ({ ...message, html: versHtml(message.texte, { ...options, secours: textes.lien_secours }) });
 

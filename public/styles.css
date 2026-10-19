@@ -199,3 +199,13 @@ th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--
   .guide h2 { font-size: 12.5pt; margin: 2.5mm 0 1mm; }
   .guide-adresse { font-size: 10.5pt; margin: 2mm 0; }
 }
+
+/* Administration : réglages et textes (étape 6). */
+.liens-admin { line-height: 2; }
+.bloc-reglages { margin: 1.25rem 0; }
+.reglage { display: flex; flex-direction: column; gap: .25rem; margin-bottom: .75rem; }
+.reglage .discret { margin: 0; }
+.reglage .lien { align-self: flex-start; padding-left: 0; }
+.modifie { font-size: .85rem; font-weight: 600; color: var(--accent); background: var(--info-fond); border-radius: .25rem; padding: 0 .35rem; }
+textarea { width: 100%; padding: .6rem .8rem; font: inherit; font-size: 1rem; border: 2px solid var(--bord); border-radius: .5rem; background: #fff; resize: vertical; }
+.texte-email { white-space: pre-wrap; font-family: inherit; font-size: .95rem; background: var(--fond); border-radius: .5rem; padding: .75rem; margin: .5rem 0 0; }

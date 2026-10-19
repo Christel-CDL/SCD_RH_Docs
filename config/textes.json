@@ -1,5 +1,5 @@
 {
-  "_aide": "Textes des e-mails, modifiables sans toucher au code (redémarrer l'application après modification). Les mots entre {{ }} sont remplacés automatiquement. Ne jamais demander de mot de passe ni de coordonnées bancaires dans le corps d'un message.",
+  "_aide": "Textes des e-mails, Valeurs d'origine : l'administratrice les modifie à l'écran (Administration → Réglages ou Textes), ce qui l'emporte sur ce fichier. Si on modifie ce fichier, redémarrer l'application. Les mots entre {{ }} sont remplacés automatiquement. Ne jamais demander de mot de passe ni de coordonnées bancaires dans le corps d'un message.",
   "nom_expediteur": "E&D Pessac – Pièces d'embauche",
   "_html": "Chaque e-mail part en deux versions : texte, et mise en forme. Dans la version mise en forme, la ligne qui contient le lien est remplacée par un bouton (libellé « bouton » ci-dessous), suivi du lien en clair précédé de « lien_secours ».",
   "lien_secours": "Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :",

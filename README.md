@@ -11,7 +11,7 @@ Cahier des charges : `OneDrive - CDL EXPERTISES\DEV-CONSULT\SCD\SCD Services\PRO
 | 3 | Dépôt avec brouillon (pièces chiffrées AES-256-GCM) | **fait** |
 | 4 | Contrôle de lisibilité, génération des PDF | **fait** |
 | 5 | Envoi par n8n, téléchargement des pièces, purge vérifiée | **fait**, en ligne sur le VPS |
-| 6 | Relances, expiration, suivi | **en cours** (décisions du 18/10/2026 dans CLAUDE.md) : relance du salarié à J+7, e-mail d'expiration, guide utilisateur, boutons « Relancer le salarié » (une fois par 24 h, `src/relances.js`) et « Annuler la demande » (`src/annulation.js`) faits ; restent l'écran « Réglages », la note d'architecture et la fiche du registre |
+| 6 | Relances, expiration, suivi | **en cours** (décisions du 18/10/2026 dans CLAUDE.md) : relance du salarié à J+7, e-mail d'expiration, guide utilisateur, boutons « Relancer le salarié » (une fois par 24 h, `src/relances.js`) et « Annuler la demande » (`src/annulation.js`), écrans **Réglages** et **Textes** de l'administration (`src/parametres.js`) faits ; restent la note d'architecture et la fiche du registre |
 
 Guide d'une page pour les personnes qui font les demandes : page **Aide** de l'application (`/aide`, imprimable) et `docs/Guide_utilisateur_agence.pdf`, refait par `node tests/e2e/guide-pdf.mjs docs/Guide_utilisateur_agence.pdf` après toute modification du texte (`pageGuide` dans `src/pages.js`).
 
@@ -34,7 +34,7 @@ Guide d'une page pour les personnes qui font les demandes : page **Aide** de l'a
 
 Après une modification d'un fichier `config/`, redémarrer l'application (en production : nouvelle image, puis Deploy).
 
-Les écrans de réglage des durées et des textes depuis l'administration arriveront avec la fin de l'étape 6.
+Depuis l'étape 6, l'administratrice modifie ces réglages et ces textes à l'écran (Administration → Réglages, Textes), sans redémarrage. Les fichiers restent les **valeurs d'origine** : seules les valeurs modifiées sont gardées en base (table `reglages`, clés `parametres_*`), contrôlées comme au démarrage ; « Revenir à l'origine » les efface. Une valeur modifiée devenue invalide après une mise à jour des fichiers est ignorée au démarrage (message dans le journal du conteneur). La liste des pièces (`pieces.json`), la purge à 15 jours et la date limite ne sont pas réglables à l'écran.
 
 ## Sécurité déjà en place (étapes 1 à 5)
 

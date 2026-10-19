@@ -15,7 +15,8 @@ export function creerCompteur({ db, notificateur, reglagesEnvoi, alerte }) {
     alerteDuJour: db.prepare("SELECT valeur FROM reglages WHERE cle = 'alerte_quota_jour'"),
     noterAlerte: db.prepare("INSERT INTO reglages (cle, valeur) VALUES ('alerte_quota_jour', ?) ON CONFLICT (cle) DO UPDATE SET valeur = excluded.valeur"),
   };
-  const seuil = Math.ceil((reglagesEnvoi.quotaJournalier * reglagesEnvoi.alerteQuotaPourcent) / 100);
+  // Calculé à chaque envoi : les réglages peuvent changer depuis l'administration.
+  const seuil = () => Math.ceil((reglagesEnvoi.quotaJournalier * reglagesEnvoi.alerteQuotaPourcent) / 100);
 
   // Nombre d'e-mails que représente un événement envoyé à n8n.
   const nbEmails = (evenement, donnees) => (evenement === 'email' ? 1 : (donnees?.messages?.length || 0));
@@ -33,7 +34,7 @@ export function creerCompteur({ db, notificateur, reglagesEnvoi, alerte }) {
     const jour = jourParis();
     const total = requetes.ajouter.get(jour, n).n;
     requetes.oublier.run(jourParis(Date.now() - 31 * 24 * 3600e3));
-    if (total >= seuil && requetes.alerteDuJour.get()?.valeur !== jour) {
+    if (total >= seuil() && requetes.alerteDuJour.get()?.valeur !== jour) {
       requetes.noterAlerte.run(jour); // noté avant l'envoi : l'alerte elle-même ne relance pas d'alerte
       const message = alerte({
         titre: 'quota d\'e-mails du jour bientôt atteint',

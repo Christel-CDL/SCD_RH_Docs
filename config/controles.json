@@ -1,5 +1,5 @@
 {
-  "_aide": "Réglages des contrôles faits dans le téléphone avant l'envoi d'une photo, et de la taille des PDF. Modifiables sans toucher au code (redémarrer l'application ensuite). Les seuils ont été calibrés le 17/10/2026 sur des photos fictives : les modifier avec prudence.",
+  "_aide": "Réglages des contrôles faits dans le téléphone avant l'envoi d'une photo, et de la taille des PDF. Valeurs d'origine : l'administratrice les modifie à l'écran (Administration → Réglages ou Textes), ce qui l'emporte sur ce fichier. Si on modifie ce fichier, redémarrer l'application. Les seuils ont été calibrés le 17/10/2026 sur des photos fictives : les modifier avec prudence.",
   "lisibilite": {
     "_aide": "petit_cote_min_px : résolution minimale (pixels sur le petit côté). nettete_min : score de netteté minimal, de 0 à 255 (force des contours des lettres, rapportée au contraste ; au calibrage : photo nette 120 à 210, légèrement floue mais lisible 70 à 150, floue 45 ou moins). luminosite_min / luminosite_max : luminosité moyenne acceptée, de 0 (noir) à 255 (blanc). reflet_max_pourcent : part maximale de pixels « brûlés » (blanc pur), signe d'un reflet. echecs_avant_forcer : nombre d'échecs après lequel le salarié peut envoyer quand même ; la pièce est alors marquée « à vérifier ».",
     "petit_cote_min_px": 1000,

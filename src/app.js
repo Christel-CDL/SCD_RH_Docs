@@ -18,6 +18,7 @@ import { creerEnvoi } from './envoi.js';
 import { creerPurge } from './purge.js';
 import { creerRelances } from './relances.js';
 import { creerAnnulation } from './annulation.js';
+import { creerParametres } from './parametres.js';
 import { creerEmails } from './emails.js';
 import { creerDemandes, validerDemande, TYPES } from './demandes.js';
 import { creerUtilisateurs } from './utilisateurs.js';
@@ -55,6 +56,10 @@ const INFOS = {
   relance_salarie_impossible: 'Cette demande ne peut plus être relancée (dossier envoyé, annulé ou date limite passée).',
   relance_echec: 'La relance n\'a pas pu partir. Réessayez dans quelques minutes.',
   demande_annulee: 'La demande est annulée : les pièces déposées et le lien du salarié sont supprimés.',
+  reglages: 'Les réglages sont enregistrés et valent dès maintenant.',
+  reglages_retablis: 'Les valeurs d\'origine sont rétablies.',
+  textes: 'Les textes sont enregistrés et valent dès maintenant.',
+  textes_retablis: 'Le texte d\'origine est rétabli.',
 };
 
 // Le jeton du salarié est dans le chemin (/d/<jeton>) : il est masqué dans le journal d'accès.
@@ -79,6 +84,7 @@ export function creerApp({ db, config, notificateur: notificateurBrut, catalogue
   const purge = creerPurge({ db, stockage, emails, notificateur });
   const relances = creerRelances({ db, config, catalogue, emails, notificateur, reglagesEnvoi });
   const annulation = creerAnnulation({ db, depot });
+  const parametres = creerParametres({ db, config, catalogue, reglages, textes, controles, reglagesEnvoi });
   purge.purger();
   const entetes = enTetesSecurite(config);
   const agence = config.agence;
@@ -395,6 +401,57 @@ export function creerApp({ db, config, notificateur: notificateurBrut, catalogue
         rediriger(res, '/admin/utilisateurs?ok=domaines');
       },
     },
+    // ── Réglages et textes (étape 6) ──
+    {
+      m: 'GET', c: '/admin/reglages', acces: 'admin',
+      f: (req, res, { url, session }) => html(res, 200, pages.pageAdminReglages({
+        agence, session, envoi: parametres.nombres('envoi'), controles: parametres.nombres('controles'), info: INFOS[url.searchParams.get('ok')] || '',
+      })),
+    },
+    {
+      m: 'POST', c: /^\/admin\/reglages\/(envoi|controles)$/, acces: 'admin',
+      f: (req, res, { params: [section], session, formulaire }) => {
+        const { erreurs } = parametres.enregistrerNombres(section, formulaire, session.id);
+        if (erreurs) {
+          return html(res, 400, pages.pageAdminReglages({
+            agence, session, envoi: parametres.nombres('envoi'), controles: parametres.nombres('controles'), section, erreurs, saisie: formulaire,
+          }));
+        }
+        rediriger(res, `/admin/reglages?ok=reglages#${section}`);
+      },
+    },
+    {
+      m: 'POST', c: /^\/admin\/reglages\/(envoi|controles)\/retablir$/, acces: 'admin',
+      f: (req, res, { params: [section], session }) => {
+        parametres.retablirNombres(section, session.id);
+        rediriger(res, `/admin/reglages?ok=reglages_retablis#${section}`);
+      },
+    },
+    {
+      m: 'GET', c: '/admin/textes', acces: 'admin',
+      f: (req, res, { url, session }) => html(res, 200, pages.pageAdminTextes({
+        agence, session, champs: parametres.champsTextes(), info: INFOS[url.searchParams.get('ok')] || '',
+      })),
+    },
+    {
+      // Le formulaire contient tous les textes : plus gros que la limite habituelle.
+      m: 'POST', c: '/admin/textes', acces: 'admin', corpsMax: 256 * 1024,
+      f: (req, res, { session, formulaire }) => {
+        const { saisie, nouveaux, erreurs } = parametres.lireTextes(formulaire);
+        const page = (statut, extra) => html(res, statut, pages.pageAdminTextes({ agence, session, champs: parametres.champsTextes(saisie), ...extra }));
+        if (Object.keys(erreurs).length) return page(400, { erreurs });
+        if (formulaire.get('action') === 'apercu') return page(200, { apercu: parametres.apercu(nouveaux) });
+        parametres.enregistrerTextes(nouveaux, session.id);
+        rediriger(res, '/admin/textes?ok=textes');
+      },
+    },
+    {
+      m: 'POST', c: '/admin/textes/retablir', acces: 'admin', corpsMax: 256 * 1024,
+      f: (req, res, { session, formulaire }) => {
+        parametres.retablirTexte(String(formulaire.get('cle') || ''), session.id);
+        rediriger(res, '/admin/textes?ok=textes_retablis');
+      },
+    },
     {
       m: 'GET', c: '/admin/journal', acces: 'admin',
       f: (req, res, { session }) => html(res, 200, pages.pageAdminJournal({ agence, session, entrees: utilisateurs.journal() })),
@@ -447,7 +504,7 @@ export function creerApp({ db, config, notificateur: notificateurBrut, catalogue
         if (!session) return rediriger(res, '/connexion');
         if (route.acces === 'admin' && session.role !== 'admin') return refuser(res, session);
       }
-      const formulaire = req.method === 'POST' && route.corps !== 'multipart' ? await lireFormulaire(req) : null;
+      const formulaire = req.method === 'POST' && route.corps !== 'multipart' ? await lireFormulaire(req, route.corpsMax) : null;
       if (formulaire && route.acces !== 'public' && !auth.csrfValide(session, formulaire.get('csrf'))) {
         return refuser(res, session, 'La page a expiré. Rechargez-la et recommencez.');
       }

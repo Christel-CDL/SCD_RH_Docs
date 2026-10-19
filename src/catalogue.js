@@ -48,8 +48,18 @@ export function chargerCatalogue(dossier) {
   return { pieces, modeles, liste: [...pieces.values()], conflits };
 }
 
-export function chargerTextes(dossier) {
-  const textes = JSON.parse(fs.readFileSync(path.join(dossier, 'textes.json'), 'utf8'));
+const lireJson = (dossier, nom) => JSON.parse(fs.readFileSync(path.join(dossier, nom), 'utf8'));
+
+// Fichiers bruts (valeurs d'origine), avant contrôle : l'écran « Réglages » y superpose les valeurs modifiées.
+export const lireTextesBruts = (dossier) => lireJson(dossier, 'textes.json');
+export const lireControlesBruts = (dossier) => lireJson(dossier, 'controles.json');
+export const lireEnvoiBrut = (dossier) => lireJson(dossier, 'envoi.json');
+
+export const chargerTextes = (dossier) => validerTextes(lireTextesBruts(dossier));
+export const chargerControles = (dossier) => validerControles(lireControlesBruts(dossier));
+export const chargerReglagesEnvoi = (dossier) => validerReglagesEnvoi(lireEnvoiBrut(dossier));
+
+export function validerTextes(textes) {
   const requis = [
     ['nom_expediteur'], ['lien_secours'], ['lien_connexion', 'sujet'], ['lien_connexion', 'texte'], ['lien_connexion', 'bouton'], ['invitation', 'bouton'],
     ['invitation', 'embauche', 'sujet'], ['invitation', 'embauche', 'intro'],
@@ -67,9 +77,7 @@ export function chargerTextes(dossier) {
 }
 
 // config/controles.json : seuils de lisibilité, réencodage des photos, taille des PDF.
-export function chargerControles(dossier) {
-  const brut = JSON.parse(fs.readFileSync(path.join(dossier, 'controles.json'), 'utf8'));
-  const bornes = {
+export const BORNES_CONTROLES = {
     'lisibilite.petit_cote_min_px': [200, 4000],
     'lisibilite.nettete_min': [0, 255],
     'lisibilite.luminosite_min': [0, 255],
@@ -80,8 +88,9 @@ export function chargerControles(dossier) {
     'photo.qualite_jpeg': [0.3, 1],
     'pdf.objectif_ko': [100, 4000],
     'pdf.plafond_ko': [500, 4000],
-  };
-  for (const [chemin, [min, max]] of Object.entries(bornes)) {
+};
+export function validerControles(brut) {
+  for (const [chemin, [min, max]] of Object.entries(BORNES_CONTROLES)) {
     const valeur = chemin.split('.').reduce((o, k) => o?.[k], brut);
     if (typeof valeur !== 'number' || valeur < min || valeur > max) {
       throw new Error(`controles.json : « ${chemin.replace('.', ' › ')} » doit être un nombre entre ${min} et ${max}`);
@@ -94,9 +103,8 @@ export function chargerControles(dossier) {
   return { lisibilite: sansAide(l), photo: sansAide(photo), pdf: sansAide(pdf) };
 }
 
-// config/envoi.json : quota d'e-mails, nouvelles tentatives.
-export function chargerReglagesEnvoi(dossier) {
-  const brut = JSON.parse(fs.readFileSync(path.join(dossier, 'envoi.json'), 'utf8'));
+// config/envoi.json : relance du salarié, quota d'e-mails, nouvelles tentatives.
+export function validerReglagesEnvoi(brut) {
   const nombre = (cle, min, max) => {
     if (typeof brut[cle] !== 'number' || brut[cle] < min || brut[cle] > max) {
       throw new Error(`envoi.json : « ${cle} » doit être un nombre entre ${min} et ${max}`);

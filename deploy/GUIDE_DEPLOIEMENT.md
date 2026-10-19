@@ -130,6 +130,10 @@ En filet de sécurité, réglez aussi la durée de conservation la plus courte :
 
 **Risque résiduel**, à mentionner dans le registre des traitements (Brevo, sous-traitant ultérieur) : pendant au plus 72 h, Brevo garde l'e-mail (nom du salarié, liste des pièces, lien personnel), jamais le contenu des pièces.
 
+## Échéances à surveiller
+
+Les clés Brevo expirent au bout d'un an : **toutes celles du compte arrivent à échéance les 18 et 19 octobre 2027** (clé SMTP « Brevo SMTP SCD » et clé API « BREVO API SCD 2 » de cet outil, clés de Constats et PENA). Une clé expirée arrête l'envoi des e-mails, ou leur effacement chez Brevo, **sans prévenir**. Rappel à caler sur le renouvellement du contrat avec l'agence, vers le 1er octobre 2027 : créer les nouvelles clés dans Brevo, les mettre dans les identifiants n8n (SMTP : Password ; Header Auth : Value, Name restant `api-key`), envoyer un lien de connexion d'essai, puis supprimer les anciennes clés.
+
 ## Passage à Outlook (phase 2, plus tard)
 
 Dans le docker-compose, `EMAIL_PROVIDER: outlook`. Puis, dans le workflow « SCD – Envoyer un e-mail », remplacez le nœud « Outlook (phase 2, pas encore installé) » par un nœud « Microsoft Outlook » (envoi de message), relié à la boîte de l'agence : identifiant OAuth, avec le consentement de l'administrateur Microsoft 365 du réseau. n8n refuse de publier un nœud Outlook sans identifiant : il ne peut pas être préparé à l'avance. L'effacement des journaux Brevo devient alors inutile pour ces e-mails. Vérifiez aussi l'adresse et le nom d'expéditeur. Rien d'autre ne change dans l'application.
