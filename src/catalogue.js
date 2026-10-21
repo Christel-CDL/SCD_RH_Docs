@@ -67,7 +67,7 @@ export function validerTextes(textes) {
     ...['bouton', 'sujet', 'texte', 'a_verifier', 'controle_seulement', 'mention_a_verifier', 'mention_controle_seulement'].map((m) => ['envoi_final', m]),
     ['expiration', 'sujet'], ['expiration', 'non_envoye'], ['expiration', 'non_telecharge'],
     ['relance', 'sujet'], ['relance', 'texte'], ['relance', 'manquantes'], ['relance', 'toutes_deposees'],
-    ['alerte', 'sujet'], ['alerte', 'texte'],
+    ['alerte', 'sujet'], ['alerte', 'texte'], ['bilan', 'sujet'], ['bilan', 'texte'], ['bilan', 'bouton'],
     ...['petite', 'floue', 'sombre', 'claire', 'reflet', 'forcer', 'bouton_forcer', 'pdf_lecture', 'pdf_pages', 'heic'].map((m) => ['lisibilite', m]),
   ];
   for (const chemin of requis) {
@@ -119,6 +119,7 @@ export function validerReglagesEnvoi(brut) {
     quotaJournalier: nombre('quota_journalier', 1, 300),
     relanceJours: nombre('relance_salarie_jours', 0, 13),
     alerteQuotaPourcent: nombre('alerte_quota_pourcent', 10, 100),
+    bilanHeure: nombre('bilan_quotidien_heure', -1, 23),
     delaisMs: delais.map((d) => d * 60e3),
   };
 }

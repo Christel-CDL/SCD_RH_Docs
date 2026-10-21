@@ -213,3 +213,17 @@ textarea { width: 100%; padding: .6rem .8rem; font: inherit; border: 2px solid v
    lignes à la même taille, mots {{ }} dans la police du texte. */
 .reglage input[type="text"], .reglage textarea { font: inherit; font-size: 1rem; line-height: 1.5; }
 code { font: inherit; font-weight: 600; color: var(--accent); }
+
+/* Tableau de bord de l'administration. */
+.tuiles { list-style: none; padding: 0; margin: 0 0 1rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: .75rem; }
+.tuile { background: #fff; border: 1px solid var(--bord); border-radius: .5rem; padding: .75rem; font-size: 1rem; }
+.tuile .nombre { display: block; font-size: 1.75rem; font-weight: 700; color: var(--accent); }
+.tuile.alerte { border-color: var(--erreur); }
+.tuile.alerte .nombre { color: var(--erreur); }
+.defilement { overflow-x: auto; }
+.tableau { border-collapse: collapse; background: #fff; font-size: 1rem; min-width: 100%; }
+.tableau th, .tableau td { border: 1px solid var(--bord); padding: .4rem .5rem; text-align: right; white-space: nowrap; }
+.tableau thead th:first-child { text-align: left; }
+.tableau.etroit { min-width: 0; }
+.tableau th[scope="row"] { text-align: left; white-space: normal; min-width: 13rem; font-weight: 600; }
+.tableau thead th { background: var(--info-fond); }

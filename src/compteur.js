@@ -33,7 +33,7 @@ export function creerCompteur({ db, notificateur, reglagesEnvoi, alerte }) {
     if (!n) return reponse;
     const jour = jourParis();
     const total = requetes.ajouter.get(jour, n).n;
-    requetes.oublier.run(jourParis(Date.now() - 31 * 24 * 3600e3));
+    requetes.oublier.run(jourParis(Date.now() - 70 * 24 * 3600e3)); // 10 semaines : tableau de bord
     if (total >= seuil() && requetes.alerteDuJour.get()?.valeur !== jour) {
       requetes.noterAlerte.run(jour); // noté avant l'envoi : l'alerte elle-même ne relance pas d'alerte
       const message = alerte({

@@ -62,7 +62,7 @@ test('e-mail « pièces prêtes » : objet normalisé, mentions, bouton de tél�
     ],
     lien: 'https://pieces.exemple.test/demandes/ABCDEFGHIJKLMNOP/pieces',
   });
-  assert.equal(message.sujet, '[Embauche] Pièces reçues – Mme ZZ TEST Le Gall – demande du 17/10/2026');
+  assert.equal(message.sujet, '[Embauche] Pièces reçues – demande du 17/10/2026');
   assert.equal(message.destinataire, 'assistante@exemple.test');
   assert.match(message.texte, /^Bonjour Sébastien FICTIF,/);
   assert.match(message.texte, /Passeport \(page photo\)\n {4}À VÉRIFIER/);
@@ -72,7 +72,7 @@ test('e-mail « pièces prêtes » : objet normalisé, mentions, bouton de tél�
   assert.equal(message.pieces_jointes, undefined);
 
   const expiration = emails.expiration({ demande, demandeur: { email: 'assistante@exemple.test', nom: 'Sébastien FICTIF' }, piecesPretes: false });
-  assert.equal(expiration.sujet, '[Embauche] Lien expiré – Mme ZZ TEST Le Gall – demande du 17/10/2026');
+  assert.equal(expiration.sujet, '[Embauche] Lien expiré – demande du 17/10/2026');
   assert.match(expiration.texte, /a expiré sans que le dossier soit envoyé/);
   assert.match(expiration.texte, /courriers indésirables/);
   assert.match(emails.expiration({ demande, demandeur: { email: 'a@exemple.test' }, piecesPretes: true }).texte, /n'ont pas été téléchargées/);
@@ -245,7 +245,7 @@ test('expiration sans dossier envoyé : tout est effacé et la personne qui a fa
     await new Promise((ok) => setImmediate(ok));
     const [message] = emailsDe(app, 'expiration');
     assert.equal(message.destinataire, ASSISTANTE);
-    assert.match(message.sujet, /^\[Embauche\] Lien expiré – Mme ZZ TEST Le Gall/);
+    assert.match(message.sujet, /^\[Embauche\] Lien expiré – demande du /);
     assert.match(message.texte, /a expiré sans que le dossier soit envoyé/);
   } finally { await app.fermer(); }
 });

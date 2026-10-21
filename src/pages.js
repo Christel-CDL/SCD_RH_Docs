@@ -5,6 +5,7 @@ import { dateCourte, dateHeure, dateLongue, dateJour } from './dates.js';
 import { TYPES, STATUTS } from './demandes.js';
 import { ACTIONS } from './utilisateurs.js';
 import { prochaineRelance } from './relances.js';
+import { LIGNES } from './tableau.js';
 
 export function echapper(valeur) {
   return String(valeur ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -403,7 +404,7 @@ export function pageAdminUtilisateurs({
     titre: 'Administration',
     contenu: `
     <h1>Administration</h1>
-    <p class="liens-admin"><a href="/admin/reglages">Réglages (durées, quotas, lisibilité)</a> · <a href="/admin/textes">Textes des e-mails et de la page de dépôt</a>
+    <p class="liens-admin"><a href="/admin/tableau-de-bord">Tableau de bord</a> · <a href="/admin/reglages">Réglages (durées, quotas, lisibilité)</a> · <a href="/admin/textes">Textes des e-mails et de la page de dépôt</a>
       · <a href="/admin/journal">Journal d'activité</a></p>
     ${message(info)}${message(erreur, true)}
     <h2>Ajouter une adresse autorisée</h2>
@@ -425,6 +426,52 @@ export function pageAdminUtilisateurs({
     ${blocEnvois}
     <h2>Adresses autorisées</h2>
     <ul class="cartes">${lignes}</ul>`,
+  });
+}
+
+// ── Tableau de bord (demande de Christel du 21/10/2026) : des nombres seulement, jamais de nom de salarié ──
+
+export function pageTableauDeBord({ agence, session, etat, semaines, quota, heureBilan }) {
+  const s = etat.parStatut;
+  const tuile = (nombre, libelle, alerte = false) => `<li class="tuile${alerte ? ' alerte' : ''}"><span class="nombre">${nombre}</span> ${echapper(libelle)}</li>`;
+  const jours = (d) => (d == null ? '–' : `${d.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} j`);
+  const entete = semaines.map((w) => `<th scope="col">${w.enCours ? 'En cours' : dateCourte(w.debut).slice(0, 5)}</th>`).join('');
+  const ligne = (libelle, valeurs) => `<tr><th scope="row">${echapper(libelle)}</th>${valeurs.map((v) => `<td>${v}</td>`).join('')}</tr>`;
+  const corps = [
+    ...LIGNES.map((l) => ligne(l.libelle, semaines.map((w) => w[l.cle] || '·'))),
+    ligne('Délai médian entre l\'invitation et le dossier envoyé', semaines.map((w) => jours(w.delaiJours))),
+    ligne('E-mails envoyés par l\'outil', semaines.map((w) => w.emails || '·')),
+  ].join('');
+  const personnes = etat.parPersonne.length
+    ? `<table class="tableau etroit"><thead><tr><th scope="col">Personne</th><th scope="col">Demandes</th></tr></thead><tbody>${etat.parPersonne.map((p) => `<tr><th scope="row">${echapper(p.nom)}</th><td>${p.n}</td></tr>`).join('')}</tbody></table>`
+    : '<p>Aucune demande depuis 30 jours.</p>';
+  return gabarit({
+    agence,
+    session,
+    titre: 'Tableau de bord',
+    large: true,
+    contenu: `
+    <h1>Tableau de bord</h1>
+    <p><a href="/admin/utilisateurs">Retour à l'administration</a> · <a href="/admin/journal">Journal d'activité</a></p>
+    <h2>En ce moment</h2>
+    <ul class="tuiles">
+      ${tuile(s.envoyee, 'invitations sans dépôt')}
+      ${tuile(s.en_cours, 'dossiers en cours de dépôt')}
+      ${tuile(s.complete, 'dossiers complets, pièces à télécharger', s.complete > 0)}
+      ${tuile(s.transmise, 'pièces récupérées (15 derniers jours)')}
+      ${tuile(s.annulee, 'demandes annulées (15 derniers jours)')}
+      ${tuile(etat.enEchec, 'envois en échec', etat.enEchec > 0)}
+      ${tuile(`${etat.emailsDuJour}/${quota}`, 'e-mails envoyés aujourd\'hui')}
+    </ul>
+    <p>Dernière activité (demande, dépôt ou connexion) : <strong>${etat.derniereActivite ? dateHeure(etat.derniereActivite) : 'aucune'}</strong>.</p>
+    <h2>Par semaine</h2>
+    <p class="discret">Chaque colonne est une semaine, du lundi indiqué au dimanche ; « · » = aucun.</p>
+    <div class="defilement"><table class="tableau"><thead><tr><th scope="col"></th>${entete}</tr></thead><tbody>${corps}</tbody></table></div>
+    <h2>Demandes par personne (30 derniers jours)</h2>
+    ${personnes}
+    <h2>Être prévenue si l'outil s'arrête</h2>
+    <p>Chaque matin ${heureBilan >= 0 ? `vers ${heureBilan} h` : ''}, l'outil vous envoie un <strong>bilan de la veille</strong>. <strong>Si vous ne le recevez pas</strong>, l'outil ou n8n est peut-être arrêté :
+      ouvrez https://pieces.expertform.fr/sante (doit afficher « ok ») et regardez l'état des conteneurs dans hPanel.</p>`,
   });
 }
 

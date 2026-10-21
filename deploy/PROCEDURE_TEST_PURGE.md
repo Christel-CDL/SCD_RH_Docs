@@ -29,7 +29,7 @@ Rappel du fonctionnement (depuis le 18/10/2026) : les pièces ne partent **jamai
 
 ### 2. Recevoir et télécharger
 
-1. Dans votre boîte : un e-mail `[Mise à jour] Pièces reçues – M. ZZ TEST Purge – demande du …`, **sans pièce jointe**, avec un bouton « Télécharger les pièces ».
+1. Dans votre boîte : un e-mail `[Mise à jour] Pièces reçues – demande du …`, **sans pièce jointe**, avec un bouton « Télécharger les pièces ».
 2. Le bouton (ou « Mes demandes » → « Télécharger les pièces ») ouvre la page des pièces : télécharger le ZIP, vérifier qu'il contient `ZZ_TEST_PURGE-RIB.pdf` et `ZZ_TEST_PURGE-JDOM.pdf`, lisibles.
 3. Cliquer sur **« J'ai enregistré les pièces : les supprimer de l'outil »**.
 

@@ -38,6 +38,9 @@ export const ACTIONS = {
   pieces_effacees_24h_apres_telechargement: 'Pièces supprimées de l\'outil 24 h après leur téléchargement',
   dossier_transmis_et_purge: 'Pièces reçues par la personne qui les a demandées, puis supprimées de l\'outil',
   purge_securite: 'Demande expirée effacée (purge à 15 jours)',
+  expiree_dossier_non_envoye: 'Demande expirée : le salarié n\'avait pas envoyé son dossier',
+  expiree_pieces_non_telechargees: 'Demande expirée : les pièces n\'avaient pas été téléchargées',
+  bilan_envoye: 'Bilan quotidien envoyé à l\'administratrice',
   purge_fichiers_orphelins: 'Fichiers orphelins effacés',
 };
 

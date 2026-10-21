@@ -19,6 +19,8 @@ import { creerPurge } from './purge.js';
 import { creerRelances } from './relances.js';
 import { creerAnnulation } from './annulation.js';
 import { creerParametres } from './parametres.js';
+import { creerTableau } from './tableau.js';
+import { creerBilan } from './bilan.js';
 import { creerEmails } from './emails.js';
 import { creerDemandes, validerDemande, TYPES } from './demandes.js';
 import { creerUtilisateurs } from './utilisateurs.js';
@@ -84,12 +86,15 @@ export function creerApp({ db, config, notificateur: notificateurBrut, catalogue
   const purge = creerPurge({ db, stockage, emails, notificateur });
   const relances = creerRelances({ db, config, catalogue, emails, notificateur, reglagesEnvoi });
   const annulation = creerAnnulation({ db, depot });
+  const tableau = creerTableau({ db, envoi, notificateur });
   const parametres = creerParametres({ db, config, catalogue, reglages, textes, controles, reglagesEnvoi });
+  const bilan = creerBilan({ db, config, emails, notificateur, tableau, reglagesEnvoi, reglages });
   purge.purger();
   const entetes = enTetesSecurite(config);
   const agence = config.agence;
 
-  // Chaque minute : nouvelles tentatives d'envoi arrivées à échéance. Toutes les 10 minutes : sessions et limiteur.
+  // Chaque minute : nouvelles tentatives d'envoi arrivées à échéance. Toutes les 10 minutes : sessions, limiteur, relances
+  // et bilan quotidien (parti une fois par jour, à l'heure réglée).
   // Toutes les heures : purge de sécurité (demandes expirées, fichiers orphelins).
   let tours = 0;
   const minuterie = setInterval(() => {
@@ -99,6 +104,7 @@ export function creerApp({ db, config, notificateur: notificateurBrut, catalogue
       auth.purger();
       limiteur.nettoyer();
       relances.relancer().catch((e) => console.error('Relances :', e.message));
+      bilan.envoyerSiDu().catch((e) => console.error('Bilan quotidien non envoyé (nouvel essai dans 10 minutes) :', e.message));
     }
     if (tours % 60 === 0) {
       try { purge.purger(); } catch (e) { console.error('Purge de sécurité :', e.message); }
@@ -401,6 +407,12 @@ export function creerApp({ db, config, notificateur: notificateurBrut, catalogue
         rediriger(res, '/admin/utilisateurs?ok=domaines');
       },
     },
+    {
+      m: 'GET', c: '/admin/tableau-de-bord', acces: 'admin',
+      f: (req, res, { session }) => html(res, 200, pages.pageTableauDeBord({
+        agence, session, etat: tableau.etat(), semaines: tableau.semaines(), quota: reglagesEnvoi.quotaJournalier, heureBilan: reglagesEnvoi.bilanHeure,
+      })),
+    },
     // ── Réglages et textes (étape 6) ──
     {
       m: 'GET', c: '/admin/reglages', acces: 'admin',
@@ -530,5 +542,5 @@ export function creerApp({ db, config, notificateur: notificateurBrut, catalogue
     traiter(req, res);
   });
   serveur.on('close', () => clearInterval(minuterie));
-  return { serveur, auth, demandes, depot, stockage, envoi, purge, relances, notificateur };
+  return { serveur, auth, demandes, depot, stockage, envoi, purge, relances, notificateur, tableau, bilan };
 }

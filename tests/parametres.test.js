@@ -27,7 +27,7 @@ test('durées : la relance suit le nouveau délai aussitôt ; valeur hors bornes
     assert.match(page, /Relance automatique du salarié/);
     assert.match(page, /value="7"/);
 
-    const champs = { relance_salarie_jours: '3', quota_journalier: '150', alerte_quota_pourcent: '80', nouvelles_tentatives_minutes: '15, 60, 240' };
+    const champs = { relance_salarie_jours: '3', quota_journalier: '150', alerte_quota_pourcent: '80', bilan_quotidien_heure: '8', nouvelles_tentatives_minutes: '15, 60, 240' };
     const refus = await poster(app, admin.cookie, '/admin/reglages/envoi', { ...champs, relance_salarie_jours: '20' });
     assert.equal(refus.status, 400);
     assert.match(await refus.text(), /entre 0 et 13/);

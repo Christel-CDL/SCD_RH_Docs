@@ -61,10 +61,10 @@
     "Vous pouvez vous arrêter à tout moment : les pièces validées sont enregistrées. Revenez plus tard avec le même lien.",
     "Un problème ? Répondez à l'e-mail que vous avez reçu : il arrivera à l'agence."
   ],
-  "_envoi_final": "E-mail envoyé à la personne qui a fait la demande (désignée par ses prénom et nom) quand le dossier est complet. Il ne contient AUCUNE pièce (décision du 18/10/2026 : Brevo conservait les pièces jointes) : un bouton mène à la page de téléchargement. {{type}} vaut « Embauche » ou « Mise à jour ». Ne jamais y reprendre de donnée tirée des pièces.",
+  "_envoi_final": "E-mail envoyé à la personne qui a fait la demande (désignée par ses prénom et nom) quand le dossier est complet. Il ne contient AUCUNE pièce (décision du 18/10/2026 : Brevo conservait les pièces jointes) : un bouton mène à la page de téléchargement. {{type}} vaut « Embauche » ou « Mise à jour ». Ne jamais y reprendre de donnée tirée des pièces. Objet sans nom de salarié (décision de Christel du 21/10/2026) : Brevo garde l'objet sur les lignes « Ouvert » et « Cliqué » créées après l'effacement du journal ; le nom reste dans le corps.",
   "envoi_final": {
     "bouton": "Télécharger les pièces",
-    "sujet": "[{{type}}] Pièces reçues – {{civilite}} {{nom}} – demande du {{date_demande}}",
+    "sujet": "[{{type}}] Pièces reçues – demande du {{date_demande}}",
     "texte": "Bonjour {{demandeur}},\n\n{{civilite}} {{nom}} a déposé les pièces que vous lui avez demandées le {{date_demande}} :\n\n{{liste}}\n{{mentions}}\nPour les télécharger, connectez-vous à l'outil de collecte :\n{{lien}}\n\nPour protéger les données du salarié, les pièces ne sont jamais jointes aux e-mails. Elles sont supprimées de l'outil dès que vous confirmez les avoir enregistrées, 24 heures après leur premier téléchargement, et au plus tard le {{date_purge}}.\n\nCet e-mail est envoyé automatiquement : pour toute question sur le dossier, contactez directement {{civilite}} {{nom}}.",
     "a_verifier": "À VÉRIFIER : photo peu lisible, envoyée par le salarié malgré le contrôle de lisibilité.",
     "controle_seulement": "CONTRÔLE SEULEMENT : à consulter puis supprimer, ne pas archiver.",
@@ -73,7 +73,7 @@
   },
   "_expiration": "E-mail envoyé à la personne qui a fait la demande quand le lien du salarié expire (15 jours après la demande) sans que les pièces aient été récupérées. Demande de Christel du 18/10/2026.",
   "expiration": {
-    "sujet": "[{{type}}] Lien expiré – {{civilite}} {{nom}} – demande du {{date_demande}}",
+    "sujet": "[{{type}}] Lien expiré – demande du {{date_demande}}",
     "non_envoye": "Bonjour {{demandeur}},\n\nLe lien de dépôt envoyé le {{date_demande}} à {{civilite}} {{nom}} a expiré sans que le dossier soit envoyé. Les pièces éventuellement déposées ont été supprimées de l'outil.\n\nPour régulariser son dossier, faites une nouvelle demande. Demandez à {{civilite}} {{nom}} de bien surveiller la réception de l'e-mail (en regardant aussi dans les courriers indésirables) et de déposer ses pièces rapidement.\n\nCet e-mail est envoyé automatiquement par l'outil de collecte de pièces.",
     "non_telecharge": "Bonjour {{demandeur}},\n\n{{civilite}} {{nom}} avait déposé toutes les pièces demandées le {{date_demande}}, mais elles n'ont pas été téléchargées dans le délai de 15 jours. Elles ont été supprimées de l'outil, comme prévu pour protéger les données du salarié.\n\nPour régulariser son dossier, faites une nouvelle demande. Demandez à {{civilite}} {{nom}} de bien surveiller la réception de l'e-mail (en regardant aussi dans les courriers indésirables) et de déposer ses pièces rapidement, puis téléchargez-les dès que vous êtes prévenu.\n\nCet e-mail est envoyé automatiquement par l'outil de collecte de pièces."
   },
@@ -81,6 +81,12 @@
   "alerte": {
     "sujet": "[Collecte de pièces] Alerte : {{titre}}",
     "texte": "Bonjour,\n\n{{detail}}\n\nIdentifiant technique : {{reference}}\n\nCe message est envoyé automatiquement par l'outil de collecte de pièces."
+  },
+  "_bilan": "Bilan quotidien envoyé à l'administratrice (demande de Christel du 21/10/2026), à l'heure réglée dans envoi.json. Que des nombres : jamais de nom ni d'adresse de salarié. {{chiffres}} et {{etat}} sont des listes calculées par l'outil.",
+  "bilan": {
+    "bouton": "Ouvrir le tableau de bord",
+    "sujet": "[Collecte de pièces] Bilan du {{date}}",
+    "texte": "Bonjour,\n\nVoici le bilan de la journée du {{date}} :\n\n{{chiffres}}\n\nEn ce moment :\n\n{{etat}}\n\nPour le détail par semaine :\n{{lien}}\n\nCe bilan arrive chaque matin. S'il n'arrive pas, l'outil ou n8n est peut-être arrêté : ouvrez {{sante}} (la page doit afficher « ok ») et vérifiez l'état des conteneurs dans hPanel.\n\nCe message est envoyé automatiquement par l'outil de collecte de pièces."
   },
   "_lisibilite": "Messages affichés au salarié quand une photo ne passe pas le contrôle de lisibilité (seuils dans controles.json). « forcer » s'affiche après plusieurs échecs, avec un bouton pour envoyer quand même.",
   "lisibilite": {

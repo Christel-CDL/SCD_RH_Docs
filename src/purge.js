@@ -5,7 +5,8 @@
 //   la personne qui a fait la demande en est prévenue par e-mail, avec le conseil de refaire une demande
 //   (demande de Christel du 18/10/2026) ;
 // - tout fichier chiffré qui n'appartient plus à aucune page (plantage au mauvais moment) est effacé.
-// Le journal garde seulement « purge_securite » et l'identifiant technique de la demande.
+// Le journal garde seulement « purge_securite » (et, si la demande n'a pas abouti, « expiree_… ») avec l'identifiant
+// technique de la demande.
 import { journaliser } from './db.js';
 
 const UNE_HEURE = 3600e3;
@@ -35,6 +36,9 @@ export function creerPurge({ db, stockage, emails = null, notificateur = null })
       for (const { fichier } of requetes.fichiers.all(demande.id)) stockage.supprimer(fichier);
       requetes.supprimer.run(demande.id);
       journaliser(db, 'purge_securite', { demandeId: demande.id });
+      // Pour le tableau de bord : une demande qui n'a pas abouti (dossier jamais envoyé, ou pièces jamais téléchargées).
+      if (['envoyee', 'en_cours'].includes(demande.statut)) journaliser(db, 'expiree_dossier_non_envoye', { demandeId: demande.id });
+      if (demande.statut === 'complete') journaliser(db, 'expiree_pieces_non_telechargees', { demandeId: demande.id });
       prevenir(demande); // après l'effacement : les données utiles à l'e-mail ont été lues avant
       demandes += 1;
     }

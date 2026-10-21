@@ -130,6 +130,13 @@ En filet de sécurité, réglez aussi la durée de conservation la plus courte :
 
 **Risque résiduel**, à mentionner dans le registre des traitements (Brevo, sous-traitant ultérieur) : pendant au plus 72 h, Brevo garde l'e-mail (nom du salarié, liste des pièces, lien personnel), jamais le contenu des pièces.
 
+## Surveiller l'outil au quotidien
+
+- **Bilan quotidien** : chaque matin (8 h par défaut, réglable dans Administration → Réglages), l'administratrice reçoit les chiffres de la veille. **S'il n'arrive pas**, l'outil, n8n ou Brevo est arrêté : ouvrir https://pieces.expertform.fr/sante (doit afficher « ok »), puis hPanel → Docker Manager → `scd-pieces` (deux conteneurs en cours d'exécution) et leurs journaux.
+- **Tableau de bord** (Administration → Tableau de bord) : état du moment et chiffres des 8 dernières semaines, sans aucun nom de salarié.
+- **Alertes** par e-mail : envoi abandonné après toutes les tentatives, 80 % de la part quotidienne d'e-mails atteinte.
+- Les journaux Brevo ne servent pas au suivi : ils sont effacés après chaque envoi.
+
 ## Échéances à surveiller
 
 Les clés Brevo expirent au bout d'un an : **toutes celles du compte arrivent à échéance les 18 et 19 octobre 2027** (clé SMTP « Brevo SMTP SCD » et clé API « BREVO API SCD 2 » de cet outil, clés de Constats et PENA). Une clé expirée arrête l'envoi des e-mails, ou leur effacement chez Brevo, **sans prévenir**. Rappel à caler sur le renouvellement du contrat avec l'agence, vers le 1er octobre 2027 : créer les nouvelles clés dans Brevo, les mettre dans les identifiants n8n (SMTP : Password ; Header Auth : Value, Name restant `api-key`), envoyer un lien de connexion d'essai, puis supprimer les anciennes clés.

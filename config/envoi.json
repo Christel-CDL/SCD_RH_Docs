@@ -6,6 +6,8 @@
   "_quota_journalier": "Nombre d'e-mails par jour réservé à cette application sur le compte Brevo partagé (300 par jour en tout, avec Constats et PENA).",
   "alerte_quota_pourcent": 80,
   "_alerte_quota_pourcent": "L'administratrice est prévenue (une fois par jour) quand ce pourcentage du quota est atteint.",
+  "bilan_quotidien_heure": 8,
+  "_bilan_quotidien_heure": "Heure (de Paris) du bilan quotidien envoyé à l'administratrice : chiffres de la veille et état du moment. S'il n'arrive pas un matin, l'outil ou n8n est peut-être arrêté. -1 pour ne plus le recevoir.",
   "nouvelles_tentatives_minutes": [
     15,
     60,

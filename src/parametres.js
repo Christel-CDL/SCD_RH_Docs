@@ -25,6 +25,7 @@ export const CHAMPS_ENVOI = [
   { cle: 'relance_salarie_jours', libelle: 'Relance automatique du salarié au bout de (jours)', aide: '0 pour ne pas relancer. Une seule relance, avec le même lien.', min: 0, max: 13 },
   { cle: 'quota_journalier', libelle: 'E-mails par jour réservés à l\'outil', aide: 'Sur 300 par jour pour tout le compte Brevo, partagé avec Constats et PENA.', min: 1, max: 300 },
   { cle: 'alerte_quota_pourcent', libelle: 'Alerte à l\'administratrice à (% de cette part)', min: 10, max: 100 },
+  { cle: 'bilan_quotidien_heure', libelle: 'Heure du bilan quotidien envoyé à l\'administratrice', aide: 'Heure de Paris, de 0 à 23 ; -1 pour ne plus le recevoir. S\'il n\'arrive pas un matin, l\'outil ou n8n est peut-être arrêté.', min: -1, max: 23 },
   { cle: 'nouvelles_tentatives_minutes', libelle: 'Si un e-mail ne part pas, nouvelles tentatives après (minutes)', aide: 'Délais séparés par des virgules, par exemple : 15, 60, 240. Après le dernier, l\'administratrice est prévenue.', liste: true },
 ];
 
@@ -54,6 +55,7 @@ const GROUPES = [
   ['envoi_final', 'Pièces reçues (e-mail à la personne qui a fait la demande)'],
   ['expiration', 'Lien expiré (e-mail à la personne qui a fait la demande)'],
   ['alerte', 'Alertes à l\'administratrice'],
+  ['bilan', 'Bilan quotidien à l\'administratrice'],
   ['mention_rgpd', 'Page de dépôt : mention RGPD'],
   ['aide_depot', 'Page de dépôt : conseils'],
   ['lisibilite', 'Page de dépôt : messages quand une photo est refusée'],
@@ -283,6 +285,10 @@ export function creerParametres({ db, config, catalogue, reglages, textes, contr
       })],
       ['Lien expiré', emails.expiration({ demande, demandeur, piecesPretes: false })],
       ['Alerte', emails.alerte({ titre: 'exemple d\'alerte', detail: 'Description du problème.', reference: 'identifiant-technique' })],
+      ['Bilan quotidien', emails.bilan({
+        date: 'lundi 19 octobre 2026', chiffres: '  • Demandes envoyées aux salariés : 2\n  • Dossiers envoyés par les salariés : 1',
+        etat: '  • Dossiers complets, pièces à télécharger : 1', lien: `${config.appUrl}/admin/tableau-de-bord`, sante: `${config.appUrl}/sante`,
+      })],
     ].map(([titre, m]) => ({ titre, expediteur: m.nom_expediteur, sujet: m.sujet, texte: m.texte }));
   }
 

@@ -148,5 +148,17 @@ export function creerEmails({ textes, catalogue, config }) {
     });
   }
 
-  return { lienConnexion, invitation, relance, envoiFinal, expiration, alerte };
+  // Bilan quotidien à l'administratrice : que des nombres (src/bilan.js).
+  function bilan({ date, chiffres, etat, lien, sante }) {
+    const valeurs = { date, chiffres, etat, lien, sante };
+    return avecHtml({
+      ...base,
+      categorie: 'bilan',
+      destinataire: config.adminEmail,
+      sujet: remplir(textes.bilan.sujet, valeurs),
+      texte: remplir(textes.bilan.texte, valeurs),
+    }, { lien, bouton: textes.bilan.bouton });
+  }
+
+  return { lienConnexion, invitation, relance, envoiFinal, expiration, alerte, bilan };
 }

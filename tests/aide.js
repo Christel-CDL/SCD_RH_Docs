@@ -34,7 +34,7 @@ export async function demarrer({ envoiEnEchec = false, env = {} } = {}) {
       return n8n.reponse;
     },
   };
-  const { serveur, stockage, envoi, purge, relances } = creerApp({ db, config, notificateur });
+  const { serveur, stockage, envoi, purge, relances, tableau, bilan } = creerApp({ db, config, notificateur });
   await new Promise((ok) => serveur.listen(0, '127.0.0.1', ok));
   config.appUrl = `http://127.0.0.1:${serveur.address().port}`;
   const base = config.appUrl;
@@ -58,7 +58,7 @@ export async function demarrer({ envoiEnEchec = false, env = {} } = {}) {
     db.close();
     fs.rmSync(dataDir, { recursive: true, force: true });
   }
-  return { db, boite, envoyer, fermer, base, config, stockage, dataDir, envoi, purge, relances, n8n };
+  return { db, boite, envoyer, fermer, base, config, stockage, dataDir, envoi, purge, relances, tableau, bilan, n8n };
 }
 
 export const attendre = () => new Promise((ok) => setImmediate(ok));
